@@ -34,6 +34,7 @@ table{border-collapse:collapse;width:100%}th,td{padding:.45rem .5rem;border-bott
 .tag{display:inline-block;padding:.05rem .5rem;border-radius:99px;font-size:.78rem;background:var(--amberbg);color:var(--amber)}.tag.g{background:var(--greenbg);color:var(--green)}.tag.r{background:var(--redbg);color:var(--red)}
 .banner{padding:.7rem 1rem;border-radius:8px;margin-bottom:1rem;background:var(--amberbg);color:#5a3b00}.banner.r{background:var(--redbg);color:#7a1610}
 .hit{display:flex;justify-content:space-between;gap:1rem;width:100%;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);margin-top:.3rem}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--line)}.stats b{display:block;font:600 1.1rem Charter,Georgia,serif;font-variant-numeric:tabular-nums}.stats span{font-size:.82rem;color:var(--ink2)}.stats .spent b{color:var(--red)}
 .total{font:600 1.5rem Charter,Georgia,serif;font-variant-numeric:tabular-nums}
 .center{min-height:100vh;display:grid;place-items:center;padding:1rem}.center .card{width:100%;max-width:400px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:99;display:flex;flex-direction:column;gap:.4rem;align-items:center}
@@ -55,8 +56,14 @@ const DEFAULT_API_URL = '';
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const LSget = (k, d) => { try { const v = localStorage.getItem('cb_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
-const LSset = (k, v) => { try { localStorage.setItem('cb_' + k, JSON.stringify(v)); return true; } catch (e) { toast('This browser cannot store data. Do not close the app and tell your manager.', true); return false; } };
+// What belongs to the PC (server link, sign-in, PIN lock) is stored once. Everything a person produces (waiting entries, history,
+// price list, counters, half-filled forms) is stored under that person's own name, so nobody ever sees another person's work.
+let WHO = '';
+const SCOPED = ['queue', 'hist', 'snap', 'lastSync', 'docseq', 'newseq', 'epoch', 'drafts'];
+const skey = k => 'cb_' + (SCOPED.indexOf(k) >= 0 ? 'u_' + WHO + '_' : '') + k;
+const LSget = (k, d) => { try { const v = localStorage.getItem(skey(k)); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const LSset = (k, v) => { try { localStorage.setItem(skey(k), JSON.stringify(v)); return true; } catch (e) { toast('This browser cannot store data. Do not close the app and tell your manager.', true); return false; } };
+const whoOf = a => a && a.user && a.user.username ? String(a.user.username).toLowerCase().replace(/[^a-z0-9._-]/g, '') : '';
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 const pad = (n, l = 2) => String(n).padStart(l, '0');
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
@@ -64,11 +71,18 @@ const weekStartStr = () => { const d = new Date(); d.setDate(d.getDate() - ((d.g
 
 try { const q = new URLSearchParams(location.search).get('api'); if (q && /^https:\/\/script\.google(usercontent)?\.com\//.test(q)) { localStorage.setItem('cb_api', JSON.stringify(q)); history.replaceState(null, '', location.pathname); } } catch (e) {}
 const S = {
-  api: LSget('api', '') || DEFAULT_API_URL, auth: LSget('auth', null), lock: LSget('lock', null), snap: LSget('snap', null),
-  queue: LSget('queue', []), hist: LSget('hist', []), lastSync: LSget('lastSync', null),
+  api: LSget('api', '') || DEFAULT_API_URL, auth: LSget('auth', null), lock: LSget('lock', null), snap: null, queue: [], hist: [], lastSync: null, epoch: null,
   unlocked: false, needLogin: false, syncing: false, screen: 'home', unlockFails: 0
 };
-const persist = () => { LSset('queue', S.queue); LSset('hist', S.hist); LSset('snap', S.snap); LSset('lastSync', S.lastSync); LSset('auth', S.auth); };
+function loadMine() { WHO = whoOf(S.auth); S.snap = WHO ? LSget('snap', null) : null; S.queue = WHO ? LSget('queue', []) : []; S.hist = WHO ? LSget('hist', []) : []; S.lastSync = WHO ? LSget('lastSync', null) : null; S.epoch = WHO ? LSget('epoch', null) : null; DRAFT = WHO ? LSget('drafts', {}) : {}; }
+let DRAFT = {};
+(function migrateOldStorage() {            // version 1.1 kept everything in shared keys: hand it to whoever is signed in
+  try { const u = whoOf(S.auth); if (!u) return;
+    ['queue', 'hist', 'snap', 'lastSync', 'docseq', 'newseq'].forEach(k => { const old = localStorage.getItem('cb_' + k); if (old != null) { if (localStorage.getItem('cb_u_' + u + '_' + k) == null) localStorage.setItem('cb_u_' + u + '_' + k, old); localStorage.removeItem('cb_' + k); } });
+  } catch (e) {}
+})();
+loadMine();
+const persist = () => { LSset('queue', S.queue); LSset('hist', S.hist); LSset('snap', S.snap); LSset('lastSync', S.lastSync); LSset('epoch', S.epoch); LSset('auth', S.auth); };
 const cur = () => (S.snap && S.snap.currency) || '₦';
 const money = n => cur() + Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const qty = n => Number(n || 0).toLocaleString('en-US', {maximumFractionDigits: 4});
@@ -102,18 +116,26 @@ async function sync(manual) {
     let guard = 0;
     do {
       const batch = S.queue.slice(0, 40);
-      const data = await call('sync', {entries: batch.map(e => { const c = {}; Object.keys(e).forEach(k => { if (k[0] !== '_') c[k] = e[k]; }); return c; })});
+      const data = await call('sync', {epoch: S.epoch || undefined, entries: batch.map(e => { const c = {}; Object.keys(e).forEach(k => { if (k[0] !== '_') c[k] = e[k]; }); return c; })});
+      if (data.epochChanged) { handleReset(data.snapshot); break; }
       const done = {}; data.results.forEach(r => done[r.clientId] = r); const at = new Date().toISOString();
       batch.forEach(e => { const r = done[e.clientId]; if (!r) return;
         S.hist.unshift({clientId: e.clientId, type: e.type, label: e._label, amount: e._total, date: e.date, docNo: r.docNo || e.docNo, status: r.status === 'ERROR' ? 'REJECTED' : 'SYNCED', message: r.message || '', flags: r.flags || [], at, seen: r.status !== 'ERROR'}); });
       S.queue = S.queue.filter(e => !done[e.clientId]); S.hist = S.hist.slice(0, 300);
-      S.snap = data.snapshot; S.lastSync = at; persist();
+      S.snap = data.snapshot; S.epoch = data.snapshot.epoch || S.epoch; S.lastSync = at; persist();
       if (!Object.keys(done).length) break;
     } while (S.queue.length && ++guard < 30);
     S.needLogin = false;
     if (manual) toast('Synced');
   } catch (e) { if (e.code === 'AUTH') S.needLogin = true; if (manual || e.code === 'AUTH') toast(e.message, true); }
-  S.syncing = false; render();
+  S.syncing = false; softRefresh();
+}
+// The office wiped its data (factory reset). Entries still waiting here belong to the old books, so they are saved to a file and cleared.
+function handleReset(snap) {
+  const n = S.queue.length;
+  if (n) { const blob = new Blob([JSON.stringify({note: 'Entries that had not synced when the office reset its data', savedAt: new Date().toISOString(), user: S.auth.user, entries: S.queue}, null, 1)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cashbook-before-reset-' + todayStr() + '.json'; a.click(); }
+  S.queue = []; S.hist = []; S.snap = snap; S.epoch = snap.epoch; S.lastSync = new Date().toISOString(); persist();
+  alert('The office has reset its records, so this app was refreshed.' + (n ? '\n\n' + n + ' entr' + (n > 1 ? 'ies' : 'y') + ' that had not been sent were saved to a file in your Downloads folder and removed. Give the file to your manager.' : ''));
 }
 const REFRESH_MS = 120000;   // while the app is open and online: send waiting entries and refresh prices, stock and totals about every 2 minutes
 setInterval(() => { if (navigator.onLine && S.auth && !S.needLogin && S.unlocked && !document.hidden && (S.queue.length || !S.lastSync || Date.now() - Date.parse(S.lastSync) > REFRESH_MS - 5000)) sync(false); }, 30000);
@@ -148,17 +170,44 @@ function render() {
   if (!S.auth) return loginScreen(app);
   if (S.lock && !S.unlocked) return unlockScreen(app);
   app.innerHTML = `<header><div class="co">${esc(S.snap ? S.snap.company : 'Cashbook')}${S.snap && S.snap.locationName && S.snap.locationName !== 'Main shop' ? ' · ' + esc(S.snap.locationName) : ''}</div><span id="who" class="pill">${esc(S.auth.user.fullName || S.auth.user.username)}</span><span id="st" class="pill"></span><button class="ghost sm" id="syncnow">Sync now</button></header>
-  <nav>${tabs().map(t => `<button data-s="${t[0]}" class="${t[0] === S.screen ? 'on' : ''}">${t[1]}${t[0] === 'hist' && pending() ? ` (${pending()})` : ''}</button>`).join('')}</nav><main id="main"></main>`;
-  app.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.screen = b.dataset.s; render(); });
-  $('#syncnow').onclick = () => sync(true); renderStatus();
-  const m = $('#main'), rej = S.hist.filter(h => h.status === 'REJECTED' && !h.seen).length;
+  <nav id="nav"></nav><main id="main"><div id="banners"></div><div id="body"></div></main>`;
+  $('#syncnow').onclick = () => sync(true); renderNav(); renderStatus(); renderBanners(); drawBody();
+}
+function renderNav() {
+  const nav = $('#nav'); if (!nav) return;
+  nav.innerHTML = tabs().map(t => `<button data-s="${t[0]}" class="${t[0] === S.screen ? 'on' : ''}">${t[1]}${t[0] === 'hist' && pending() ? ` (${pending()})` : ''}</button>`).join('');
+  nav.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.screen = b.dataset.s; renderNav(); drawBody(); });
+}
+function renderBanners() {
+  const el = $('#banners'); if (!el) return; const rej = S.hist.filter(h => h.status === 'REJECTED' && !h.seen).length;
   let top = '';
   if (S.needLogin) top += `<div class="banner r">Your login has expired. Your entries are safe on this PC. <button class="sm" id="relog">Sign in again</button></div>`;
   if (rej) top += `<div class="banner r">${rej} entr${rej > 1 ? 'ies were' : 'y was'} rejected by the office. Show them to your manager (see “My entries”).</div>`;
-  m.innerHTML = top; const body = document.createElement('div'); m.appendChild(body);
+  el.innerHTML = top;
   const rl = $('#relog'); if (rl) rl.onclick = () => { S.auth = Object.assign({}, S.auth, {token: null}); loginScreen($('#app'), true); };
+}
+function drawBody() {
+  const body = $('#body'); if (!body) return;
   ({home, sale: saleScreen, pay: payScreen, exp: expScreen, stockin: stockInScreen, newp: newProductScreen, stock: stockScreen, cust: custScreen, hist: histScreen, set: setScreen})[S.screen](body);
 }
+// After a background sync: update the badge, banners and only the screens that have nothing being typed into them.
+// A form you are filling in (sale, payment, expense, receiving stock, new item) is never redrawn, so nothing you typed is lost.
+function softRefresh() {
+  if (!S.auth || (S.lock && !S.unlocked) || !$('#body')) { render(); return; }
+  renderStatus(); renderBanners(); renderNav();
+  const co = $('.co'); if (co && S.snap) co.textContent = S.snap.company + (S.snap.locationName && S.snap.locationName !== 'Main shop' ? ' · ' + S.snap.locationName : '');
+  if (['home', 'hist', 'stock', 'cust'].indexOf(S.screen) < 0) return;
+  const q = $('#q'), keep = q ? {v: q.value, focus: document.activeElement === q, pos: q.selectionStart} : null;
+  drawBody();
+  if (keep && $('#q')) { const nq = $('#q'); nq.value = keep.v; nq.dispatchEvent(new Event('input')); if (keep.focus) { nq.focus(); try { nq.setSelectionRange(keep.pos, keep.pos); } catch (e) {} } }
+}
+// Remember what is typed in the simple forms, so even switching tabs and coming back loses nothing.
+function bindDraft(screen, ids) {
+  const d = DRAFT[screen] || {};
+  ids.forEach(id => { const el = document.getElementById(id); if (!el) return; if (d[id] !== undefined) el.value = d[id];
+    el.addEventListener('input', () => { (DRAFT[screen] = DRAFT[screen] || {})[id] = el.value; LSset('drafts', DRAFT); }); });
+}
+function clearDraft(screen) { delete DRAFT[screen]; LSset('drafts', DRAFT); }
 function renderStatus() {
   const st = $('#st'); if (!st) return; const on = navigator.onLine;
   st.className = 'pill ' + (S.syncing ? 'warn' : pending() ? 'warn' : on ? 'on' : ''); st.textContent = S.syncing ? 'Syncing…' : pending() ? pending() + ' waiting to sync' : on ? 'Online · all synced' : 'Offline · nothing waiting';
@@ -173,12 +222,18 @@ function loginScreen(app, relogin) {
     try {
       if (f.api) { S.api = f.api.value.trim(); LSset('api', S.api); }
       const u = f.u.value.trim();
-      if (S.queue.length && S.queue.some(x => x._user && x._user.toLowerCase() !== u.toLowerCase())) throw {message: 'This PC has unsynced entries from ' + S.queue[0]._user + '. They must sign in first so their sales are posted under their name.'};
+      const others = waitingFromOthers(u);
       const d = await call('login', {username: u, pin: f.p.value, device: navigator.platform + ' · ' + (navigator.userAgent.match(/(Chrome|Edg|Firefox)\/[\d.]+/) || [''])[0]}, 30000);
-      S.auth = {token: d.token, expiresAt: d.expiresAt, user: d.user};
+      S.auth = {token: d.token, expiresAt: d.expiresAt, user: d.user}; LSset('auth', S.auth); loadMine();
       const salt = uid(); S.lock = {salt, hash: await lockHash(salt, f.p.value)}; LSset('lock', S.lock); S.unlocked = true; S.needLogin = false; persist();
-      await sync(false); S.screen = 'home'; render();
+      S.screen = 'home'; render(); if (others) toast(others, true); await sync(false);
     } catch (err) { toast(err.message || 'Could not sign in', true); b.disabled = false; } };
+}
+// Entries other people left waiting on this PC stay theirs: they are kept under their own name and are sent when they sign in.
+function waitingFromOthers(me) {
+  let lines = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i), m = /^cb_u_(.+)_queue$/.exec(k || ''); if (!m || m[1] === me.toLowerCase().replace(/[^a-z0-9._-]/g, '')) continue; const q = JSON.parse(localStorage.getItem(k) || '[]'); if (q.length) lines.push(q.length + ' from ' + m[1]); } } catch (e) {}
+  return lines.length ? 'Still waiting on this PC: ' + lines.join(', ') + '. They are kept private and are sent when that person signs in.' : '';
 }
 function unlockScreen(app) {
   app.innerHTML = `<div class="center"><form class="card" id="uf"><h1>Welcome back, ${esc(S.auth.user.fullName || S.auth.user.username)}</h1><p class="muted">Enter your PIN. Works offline.</p>
@@ -191,12 +246,13 @@ function unlockScreen(app) {
 }
 
 function home(m) {
-  const T = ['today', 'week', 'month'].map(k => [k, totalsFor(k)]), co = S.snap && S.snap.showCompanyTotals;
-  m.innerHTML = `<h2>${co ? 'Company totals' : 'My totals'}</h2><div class="grid">${T.map(([k, t]) => `<div class="card"><div class="muted">${k === 'today' ? 'Today' : k === 'week' ? 'This week' : 'This month'}</div><div class="big">${money(t.revenue)}</div>
-    <div class="hint">${t.invoices} sale${t.invoices === 1 ? '' : 's'} · ${qty(t.qty)} units sold</div><div class="hint">Money spent: ${money(t.expenses)}</div></div>`).join('')}</div>
+  const T = ['today', 'week', 'month'].map(k => [k, totalsFor(k)]), co = S.snap && S.snap.showCompanyTotals, nm = {today: 'Today', week: 'This week', month: 'This month'};
+  m.innerHTML = `<h2>${co ? 'Shop totals' : 'My totals'}</h2><div class="grid">${T.map(([k, t]) => `<div class="card"><div class="muted"><b>${nm[k]}</b></div>
+    <div class="big">${money(t.revenue)}</div><div class="hint">Sales · ${t.invoices} sale${t.invoices === 1 ? '' : 's'}</div>
+    <div class="stats"><div><b>${qty(t.qty)}</b><span>Units sold</span></div><div class="spent"><b>${money(t.expenses)}</b><span>Money spent</span></div></div></div>`).join('')}</div>
   <p class="hint">Includes entries still waiting to sync. Last synced: ${S.lastSync ? new Date(S.lastSync).toLocaleString() : 'never'}.</p>
   <div class="row" style="margin-top:1rem"><div class="fit"><button id="g-sale">New sale</button></div><div class="fit"><button class="ghost" id="g-pay">Customer payment</button></div><div class="fit"><button class="ghost" id="g-exp">Record expense</button></div></div>`;
-  $('#g-sale').onclick = () => { S.screen = 'sale'; render(); }; $('#g-pay').onclick = () => { S.screen = 'pay'; render(); }; $('#g-exp').onclick = () => { S.screen = 'exp'; render(); };
+  $('#g-sale').onclick = () => { S.screen = 'sale'; renderNav(); drawBody(); }; $('#g-pay').onclick = () => { S.screen = 'pay'; renderNav(); drawBody(); }; $('#g-exp').onclick = () => { S.screen = 'exp'; renderNav(); drawBody(); };
 }
 
 let CART = [], SF = {cust: 'walk', paid: '', method: 'Cash', notes: '', nn: '', np: ''};
@@ -215,7 +271,7 @@ function saleScreen(m) {
     $('#tot').innerHTML = money(t) + (SF.cust !== 'walk' && p < t ? ` <span class="neg" style="font-size:.9rem">on credit: ${money(t - p)}</span>` : ''); };
   ['cust', 'paid', 'method', 'notes', 'nn', 'np'].forEach(id => $('#' + id).addEventListener('input', sync_));
   const drawCart = () => { $('#cart').innerHTML = CART.length ? `<table><thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th><th></th></tr></thead><tbody>${CART.map((c, i) => { const p = prod(c.sku), a = avail(c.sku);
-      const hint = isSvc(p) ? `<div class="hint">service${p.editable ? ' · enter the price you quote' : ''}</div>` : `<div class="hint ${a < c.qty ? 'neg' : ''}">${qty(a)} available${a < c.qty ? ' — not enough on record' : ''}</div>`;
+      const hint = isSvc(p) ? `<div class="hint">service${p.editable ? ' · enter the price you quote' : ''}</div>` : `<div class="hint ${a < c.qty ? 'neg' : ''}">${qty(a)} available${a < c.qty ? ' — not enough on record — ' + ((S.snap && S.snap.oversellPolicy) === 'FLAG' ? 'will be flagged' : 'cannot be sold until stock is recorded') : ''}</div>`;
       return `<tr><td>${esc(p.name)}${hint}</td><td class="num"><input type="number" step="any" min="0" value="${c.qty}" data-q="${i}" style="width:90px;text-align:right"></td><td class="num">${p.editable ? `<input type="number" step="any" min="0" value="${c.price === undefined ? p.price : c.price}" data-p="${i}" style="width:110px;text-align:right">` : money(p.price)}</td><td class="num" data-lt="${i}">${money(c.qty * linePrice(c))}</td><td><button class="ghost sm" data-rm="${i}">✕</button></td></tr>`; }).join('')}</tbody></table>` : '<p class="muted">No items yet. Search above and tap a product to add it.</p>';
     const upd = k => { const c = CART[k]; sync_(); const cell = $('#cart [data-lt="' + k + '"]'); if (cell) cell.textContent = money(c.qty * linePrice(c)); };
     $('#cart').querySelectorAll('[data-q]').forEach(i => i.oninput = () => { CART[+i.dataset.q].qty = +i.value; upd(+i.dataset.q); });
@@ -236,7 +292,11 @@ function saleScreen(m) {
     if (SF.cust === 'new' && !SF.nn.trim()) return toast('Enter the new customer’s name.', true);
     if (SF.cust === 'walk' && paid < total) return toast('Walk-in customers must pay in full. Choose a customer for credit sales.', true);
     const short = CART.filter(c => avail(c.sku) !== null && avail(c.sku) < c.qty).map(c => prod(c.sku).name);
-    if (short.length && !confirm('The records show less stock than you are selling for: ' + short.join(', ') + '.\nSave the sale anyway? The office will be alerted.')) return;
+    if (short.length) {
+      const policy = (S.snap && S.snap.oversellPolicy) || 'BLOCK', boss = S.auth.user.role === 'OWNER', msg = 'The records show less stock than you are selling for: ' + short.join(', ') + '.';
+      if (policy === 'BLOCK' && !boss) return toast(msg + ' Reduce the quantity, or ask your manager to record the stock first.', true);
+      if (!confirm(msg + (policy === 'BLOCK' ? '\n\nYou are signed in as a manager. Sell anyway?' : '\n\nSave the sale anyway? It will be flagged for the owner to review.'))) return;
+    }
     const c = S.snap.customers.find(x => x.id === SF.cust);
     const e = {type: 'SALE', docNo: nextDocNo(), items: CART.map(x => ({sku: x.sku, qty: x.qty, price: linePrice(x)})), amountPaid: paid, method: SF.method, notes: SF.notes,
       _label: SF.cust === 'walk' ? 'Walk-in' : SF.cust === 'new' ? SF.nn.trim() : c.name, _total: total, _qty: CART.reduce((s, x) => s + x.qty, 0)};
@@ -261,15 +321,17 @@ function payScreen(m) {
   m.innerHTML = `<h2>Customer payment</h2><div class="card"><p class="muted">Use this when a customer pays money they owe from earlier sales.</p><div class="row"><div><label>Customer</label><select id="pc"><option value="">Choose…</option>${debtors.map(c => `<option value="${esc(c.id)}">${esc(c.name)} — owes ${money(custBalance(c))}</option>`).join('')}</select></div>
   <div><label>Amount received</label><input id="pa" type="number" step="any" min="0"></div><div><label>Method</label><select id="pm">${S.snap.paymentMethods.map(x => `<option>${esc(x)}</option>`).join('')}</select></div></div>
   <div style="margin:.8rem 0"><label>Note (optional)</label><input id="pn"></div><button id="ps">Save payment</button></div>`;
+  bindDraft('pay', ['pc', 'pa', 'pm', 'pn']);
   $('#ps').onclick = () => { const id = $('#pc').value, a = +$('#pa').value; if (!id) return toast('Choose a customer.', true); if (!(a > 0)) return toast('Enter the amount received.', true);
     const c = S.snap.customers.find(x => x.id === id); if (a > custBalance(c) + 0.005 && !confirm('That is more than the customer owes (' + money(custBalance(c)) + '). Save anyway?')) return;
-    enqueue({type: 'PAYMENT_IN', partyId: id, amount: a, method: $('#pm').value, notes: $('#pn').value, _label: c.name, _total: a}); toast('Payment saved'); render(); };
+    enqueue({type: 'PAYMENT_IN', partyId: id, amount: a, method: $('#pm').value, notes: $('#pn').value, _label: c.name, _total: a}); toast('Payment saved'); clearDraft('pay'); render(); };
 }
 function expScreen(m) {
   const cats = S.snap ? S.snap.expenseCategories : ['Transport', 'Fuel', 'Other'];
   m.innerHTML = `<h2>Record an expense</h2><div class="card"><div class="row"><div><label>Category</label><select id="ec">${cats.map(c => `<option>${esc(c)}</option>`).join('')}</select></div><div><label>Amount</label><input id="ea" type="number" step="any" min="0"></div>
   <div><label>Method</label><select id="em">${(S.snap ? S.snap.paymentMethods : ['Cash']).map(x => `<option>${esc(x)}</option>`).join('')}</select></div></div><div style="margin:.8rem 0"><label>What was it for?</label><input id="en"></div><button id="es">Save expense</button></div>`;
-  $('#es').onclick = () => { const a = +$('#ea').value; if (!(a > 0)) return toast('Enter the amount.', true); enqueue({type: 'EXPENSE', category: $('#ec').value, amount: a, method: $('#em').value, notes: $('#en').value, _label: $('#ec').value, _total: a}); toast('Expense saved'); render(); };
+  bindDraft('exp', ['ec', 'ea', 'em', 'en']);
+  $('#es').onclick = () => { const a = +$('#ea').value; if (!(a > 0)) return toast('Enter the amount.', true); enqueue({type: 'EXPENSE', category: $('#ec').value, amount: a, method: $('#em').value, notes: $('#en').value, _label: $('#ec').value, _total: a}); toast('Expense saved'); clearDraft('exp'); render(); };
 }
 let SI = [], SIF = {sup: '', nn: '', paid: '', method: 'Cash', notes: ''};
 function stockInScreen(m) {
@@ -321,7 +383,7 @@ function newProductScreen(m) {
   <div class="row" style="margin:.8rem 0"><div><label>Selling price</label><input id="np-price" type="number" step="any" min="0"></div><div id="np-re-w"><label>Alert me when stock is at or below</label><input id="np-re" type="number" step="any" min="0" value="0"></div><div id="np-pe-w" style="display:none"><label><input type="checkbox" id="np-pe" style="width:auto;min-height:0"> Price is quoted per job</label></div></div>
   <button id="np-save">Save</button></div>`;
   const sync_ = () => { const svc = $('#np-kind').value === 'SERVICE'; $('#np-re-w').style.display = svc ? 'none' : ''; $('#np-pe-w').style.display = svc ? '' : 'none'; $('#np-newcat-w').style.display = $('#np-cat').value === '__new' || !cats.length ? '' : 'none'; if ($('#np-unit').value === 'pc' && svc) $('#np-unit').value = 'job'; else if ($('#np-unit').value === 'job' && !svc) $('#np-unit').value = 'pc'; };
-  ['np-kind', 'np-cat'].forEach(id => $('#' + id).addEventListener('input', sync_)); sync_();
+  bindDraft('newp', ['np-kind', 'np-name', 'np-cat', 'np-newcat', 'np-unit', 'np-price', 're-placeholder'].filter(x => x !== 're-placeholder').concat(['np-re'])); ['np-kind', 'np-cat'].forEach(id => $('#' + id).addEventListener('input', sync_)); sync_();
   $('#np-save').onclick = () => {
     const name = $('#np-name').value.trim(), cat = ($('#np-cat').value === '__new' || !cats.length) ? $('#np-newcat').value.trim() : $('#np-cat').value, price = +$('#np-price').value;
     if (!name) return toast('Enter a name.', true); if (!cat) return toast('Choose or type a category.', true); if (!($('#np-price').value !== '' && price >= 0)) return toast('Enter the selling price.', true);
@@ -329,7 +391,7 @@ function newProductScreen(m) {
     const c = LSget('newseq', 0) + 1; LSset('newseq', c);
     const pre = (S.auth.user.username.replace(/[^A-Za-z0-9]/g, '').slice(0, 4) || 'REP').toUpperCase(), kind = $('#np-kind').value;
     enqueue({type: 'ADD_PRODUCT', sku: `NEW-${pre}-${pad(c, 3)}`, name, category: cat, unit: $('#np-unit').value.trim() || (kind === 'SERVICE' ? 'job' : 'pc'), price, reorder: kind === 'ITEM' ? +$('#np-re').value || 0 : 0, kind, priceEditable: kind === 'SERVICE' && $('#np-pe').checked, _label: name, _total: price});
-    toast('Saved. You can use it now.'); S.screen = kind === 'SERVICE' ? 'sale' : 'stockin'; if (!can('STOCK_IN') && kind === 'ITEM') S.screen = 'stock'; render();
+    clearDraft('newp'); toast('Saved. You can use it now.'); S.screen = kind === 'SERVICE' ? 'sale' : 'stockin'; if (!can('STOCK_IN') && kind === 'ITEM') S.screen = 'stock'; renderNav(); drawBody();
   };
 }
 
@@ -362,7 +424,7 @@ function setScreen(m) {
   $('#cp').onclick = async () => { try { await call('changePin', {oldPin: $('#p0').value, newPin: $('#p1').value}); const salt = uid(); S.lock = {salt, hash: await lockHash(salt, $('#p1').value)}; LSset('lock', S.lock); toast('PIN changed'); render(); } catch (e) { toast(e.message, true); } };
   $('#bk').onclick = () => { const blob = new Blob([JSON.stringify({exportedAt: new Date().toISOString(), user: S.auth.user, queue: S.queue, history: S.hist.slice(0, 100)}, null, 1)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cashbook-backup-' + todayStr() + '.json'; a.click(); };
   $('#lo').onclick = async () => { if (pending() && !confirm('You still have ' + pending() + ' unsynced entries. Signing out keeps them on this PC, but only YOU can post them. Sign out anyway?')) return;
-    try { await call('logout', {}, 8000); } catch (e) {} S.auth = null; S.lock = null; S.unlocked = false; LSset('auth', null); LSset('lock', null); render(); };
+    try { await call('logout', {}, 8000); } catch (e) {} persist(); S.auth = null; S.lock = null; S.unlocked = false; LSset('auth', null); LSset('lock', null); loadMine(); render(); };
 }
 
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});

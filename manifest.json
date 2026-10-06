@@ -1,7 +1,9 @@
 {
+  "id": "./RepApp.html",
   "name": "Cashbook — Sales",
-  "short_name": "Cashbook",
+  "short_name": "Cashbook Sales",
   "start_url": "./RepApp.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#14213d",
   "theme_color": "#14213d",

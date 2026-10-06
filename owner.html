@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest-owner.json">
+<link rel="icon" href="icon-owner-192.png">
+<title>Cashbook — Owner</title>
+<style>
+:root{--ink:#14213d;--ink2:#4a5670;--paper:#f2f4f7;--card:#fff;--line:#d9dee7;--green:#0b7a53;--greenbg:#e3f3ec;--red:#b3261e;--redbg:#fbe9e7;--amber:#a86b00;--amberbg:#fdf1d6;--accent:#14213d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3{font-family:Charter,"Bitstream Charter","Sitka Text",Cambria,Georgia,serif;margin:0 0 .5rem;letter-spacing:-.01em}
+h1{font-size:1.7rem}h2{font-size:1.25rem}h3{font-size:1.05rem}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;padding:.5rem .9rem;min-height:38px}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.danger{background:var(--red);border-color:var(--red)}
+button.sm{padding:.2rem .55rem;min-height:28px;font-size:.85rem}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid #7aa7ff;outline-offset:1px}
+input,select,textarea{width:100%;padding:.5rem .6rem;border:1px solid var(--line);border-radius:6px;background:#fff;min-height:38px}
+label{display:block;font-size:.85rem;color:var(--ink2);margin-bottom:.2rem}
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+nav{background:var(--ink);color:#cfd6e6;padding:1rem .7rem;position:sticky;top:0;height:100vh;overflow:auto}
+nav .brand{font:700 1.15rem Charter,Georgia,serif;color:#fff;padding:.2rem .6rem 1rem}
+nav .brand small{display:block;font:400 .78rem system-ui;color:#9aa6c0}
+nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#cfd6e6;border-radius:6px;margin:2px 0;padding:.55rem .7rem}
+nav button.on{background:#fff;color:var(--ink);font-weight:600}
+nav .bottom{margin-top:1.5rem;border-top:1px solid #2d3b5f;padding-top:.8rem;font-size:.85rem}
+main{padding:1.3rem 1.6rem 3rem;max-width:1180px;width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:1rem 1.1rem;margin-bottom:1rem}
+.grid{display:grid;gap:1rem}.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}.row>*{flex:1 1 150px}.row>.fit{flex:0 0 auto}
+.muted{color:var(--ink2)}.pos{color:var(--green)}.neg{color:var(--red)}
+.big{font:600 1.9rem Charter,Georgia,serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.period{display:grid;grid-template-columns:auto repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;margin-bottom:1rem}
+.period>div{padding:.55rem .8rem;border-bottom:1px solid var(--line)}.period>div:nth-child(5n+1){background:#f8f9fb;color:var(--ink2)}
+.period .h{background:var(--ink)!important;color:#fff!important;font-weight:600}.period .net{background:var(--greenbg);font-weight:700}
+table{border-collapse:collapse;width:100%}th,td{padding:.45rem .6rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+td:first-child{min-width:150px}
+th{font-size:.82rem;color:var(--ink2);font-weight:600;background:#f8f9fb;position:sticky;top:0}th.num{text-align:right}
+.scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:8px;background:#fff}
+.tag{display:inline-block;padding:.05rem .45rem;border-radius:99px;font-size:.78rem;background:var(--amberbg);color:var(--amber);margin:1px}
+.tag.g{background:var(--greenbg);color:var(--green)}.tag.r{background:var(--redbg);color:var(--red)}
+tr.rev td{text-decoration:line-through;color:#8a93a6}
+.tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}.tabs button{background:#fff;color:var(--ink);border-color:var(--line)}.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.bars{display:flex;align-items:end;gap:5px;height:110px}.bars div{flex:1;background:var(--green);min-height:2px;border-radius:3px 3px 0 0;position:relative}.bars div.n{background:var(--red)}
+.bars-l{display:flex;gap:5px;font-size:.68rem;color:var(--ink2)}.bars-l span{flex:1;text-align:center}
+#toast{position:fixed;right:1rem;bottom:1rem;z-index:99;display:flex;flex-direction:column;gap:.5rem}
+#toast div{background:var(--ink);color:#fff;padding:.7rem 1rem;border-radius:8px;max-width:360px;box-shadow:0 4px 18px #0003}#toast .err{background:var(--red)}
+.overlay{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto;z-index:50}
+.modal{background:#fff;border-radius:10px;padding:1.2rem 1.3rem;width:100%;max-width:680px}.modal.wide{max-width:900px}
+.modal .head{display:flex;justify-content:space-between;align-items:start;margin-bottom:.8rem}
+.field{margin-bottom:.8rem}
+.login{min-height:100vh;display:grid;place-items:center;padding:1rem}.login .card{width:100%;max-width:380px;padding:1.6rem}
+.hint{font-size:.85rem;color:var(--ink2)}
+.total{font:600 1.3rem Charter,Georgia,serif;font-variant-numeric:tabular-nums}
+@media(max-width:820px){.shell{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap;gap:2px;padding:.6rem}nav .brand{width:100%;padding-bottom:.3rem}nav button{width:auto}nav .bottom{display:none}main{padding:1rem}.period{grid-template-columns:auto 1fr 1fr 1fr 1fr;font-size:.85rem}}
+#bar{position:fixed;left:0;top:0;height:3px;width:0;background:#2fbf8a;z-index:200;transition:width .25s ease,opacity .3s;opacity:0}
+.stale{opacity:.82;transition:opacity .2s}
+.chart{position:relative;padding-top:6px}.cols{display:flex;align-items:flex-end;gap:4px;height:176px;border-bottom:1px solid var(--line)}
+.col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.col i{display:block;width:72%;max-width:34px;background:var(--green);border-radius:4px 4px 0 0;min-height:2px}.col i.z{background:var(--line)}
+.col .val{font-size:.66rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--ink);margin-bottom:3px;white-space:nowrap;font-weight:600}.col .val.z{color:#9aa4b8;font-weight:400}
+.dates{display:flex;gap:4px;margin-top:4px}.dates span{flex:1 1 0;min-width:0;text-align:center;font-size:.66rem;color:var(--ink2);line-height:1.15}.dates b{display:block;font-weight:600;color:var(--ink)}
+.navbadge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:99px;background:#e0a100;color:#1b1400;font-size:.72rem;font-weight:700;text-align:center}
+.danger-zone{border-color:#e6b3ae;background:#fff8f7}.danger-zone label.chk{display:flex;gap:.6rem;align-items:flex-start;color:var(--ink);margin:.5rem 0}.danger-zone label.chk input{width:auto;min-height:0;margin-top:.2rem}
+.warnbox{background:var(--amberbg);border:1px solid #e6c36a;border-radius:8px;padding:.7rem .9rem;margin:.8rem 0}
+@media print{nav,.noprint,#toast{display:none!important}.shell{display:block}.overlay{position:static;background:none;padding:0}.modal{box-shadow:none;max-width:none}main{display:none}}
+</style>
+</head>
+<body>
+<div id="bar"></div><div id="root"></div><div id="toast"></div>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let TOKEN = localStorage.getItem('cb_o_tok'), L = null, CUR = '₦', ME = null, VIEW = 'dashboard';
+try { ME = JSON.parse(localStorage.getItem('cb_o_me') || 'null'); } catch (e) {}
+const money = n => CUR + Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const qty = n => Number(n || 0).toLocaleString('en-US', {maximumFractionDigits: 4});
+const cls = n => n < 0 ? 'neg' : '';
+const uid = () => crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(36).slice(2);
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+/* ---- transport: inside Apps Script (google.script.run) or installed from GitHub (fetch) ---- */
+const IN_SCRIPT = typeof google !== 'undefined' && google.script && google.script.run;
+try { const q = new URLSearchParams(location.search).get('api'); if (q && /^https:\/\/script\.google(usercontent)?\.com\//.test(q)) { localStorage.setItem('cb_o_api', q); history.replaceState(null, '', location.pathname); } } catch (e) {}
+let API_URL = localStorage.getItem('cb_o_api') || '';
+function rpc(req) {
+  if (IN_SCRIPT) return new Promise((resolve, reject) => google.script.run.withSuccessHandler(s => resolve(JSON.parse(s))).withFailureHandler(e => reject(new Error(e.message || 'Request failed'))).api(JSON.stringify(req)));
+  if (!API_URL) return Promise.reject(new Error('Server link missing. Use the install link from your setup guide.'));
+  return fetch(API_URL, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, redirect: 'follow', body: JSON.stringify(req)}).then(r => r.json()).catch(() => { throw new Error('Cannot reach the server. Check your internet connection.'); });
+}
+if (!IN_SCRIPT && API_URL) fetch(API_URL + '?ping=1', {mode: 'no-cors'}).catch(() => {});   // wakes the server while you type your password
+
+/* ---- speed: results are remembered, shown instantly, then refreshed quietly ---- */
+const READS = new Set(['lists', 'dashboard', 'products', 'parties', 'users', 'config', 'ledger', 'report', 'statement', 'stockCard', 'audit', 'integrity', 'resetPreview']);
+const KEEP = new Set(['lists', 'dashboard', 'products', 'parties', 'users']);          // also kept on this device so the app opens with data
+let MEM = {}, busy = 0;
+const ckey = (a, d) => a + '|' + JSON.stringify(d || {});
+function bar(on) { busy += on ? 1 : -1; const b = $('#bar'); if (!b) return; if (busy > 0) { b.style.opacity = 1; b.style.width = '70%'; } else { b.style.width = '100%'; setTimeout(() => { if (busy <= 0) { b.style.opacity = 0; b.style.width = '0'; } }, 250); } }
+function loadKept() { try { MEM = JSON.parse(localStorage.getItem('cb_o_cache') || '{}'); } catch (e) { MEM = {}; } }
+function saveKept() { try { const o = {}; Object.keys(MEM).forEach(k => { if (KEEP.has(k.split('|')[0])) o[k] = MEM[k]; }); localStorage.setItem('cb_o_cache', JSON.stringify(o)); } catch (e) {} }
+function dropCache() { MEM = {}; try { localStorage.removeItem('cb_o_cache'); } catch (e) {} }
+async function call(action, data, noBar) {
+  if (!noBar) bar(true);
+  try {
+    const j = await rpc(Object.assign({action, token: TOKEN}, data || {}));
+    if (j.ok) return j;
+    if (j.code === 'AUTH') { TOKEN = null; localStorage.removeItem('cb_o_tok'); dropCache(); showLogin(j.error); }
+    throw new Error(j.error);
+  } finally { if (!noBar) bar(false); }
+}
+async function api(action, data) {
+  if (READS.has(action)) { const j = await call(action, data); MEM[ckey(action, data)] = j.data; if (KEEP.has(action)) saveKept(); return j.data; }
+  const j = await call(action, data);
+  if (action !== 'login' && action !== 'logout') { MEM = {}; saveKept(); LSTALE = true; if (TOKEN) warm(); }        // anything that changes data clears what we remembered
+  return j.data;
+}
+// Show what we already know at once, then refresh. draw(data, isStale) is called once or twice.
+async function swr(action, data, draw) {
+  const k = ckey(action, data), have = MEM[k], t0 = VIEW_TOKEN;
+  let shown = null;
+  if (have !== undefined) { shown = JSON.stringify(have); draw(have, true); }
+  try {
+    const fresh = await api(action, data);
+    if (t0 !== VIEW_TOKEN) return fresh;                       // the user already moved to another tab
+    if (JSON.stringify(fresh) !== shown) { const ae = document.activeElement; if (!(have !== undefined && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && $('#main').contains(ae))) draw(fresh, false); }
+    else if ($('#main')) $('#main').classList.remove('stale');
+    return fresh;
+  } catch (e) { if (have === undefined) throw e; toast('Showing saved figures — ' + e.message, true); }
+}
+let LSTALE = true, VIEW_TOKEN = 0;
+function toast(msg, err) { const t = document.createElement('div'); if (err) t.className = 'err'; t.textContent = msg; $('#toast').appendChild(t); setTimeout(() => t.remove(), err ? 7000 : 3500); }
+async function run(btn, fn) { if (btn) btn.disabled = true; try { return await fn(); } catch (e) { toast(e.message, true); } finally { if (btn) btn.disabled = false; } }
+function modal(title, html, wide) {
+  const o = document.createElement('div'); o.className = 'overlay';
+  o.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-label="${esc(title)}"><div class="head"><h2>${esc(title)}</h2><button class="ghost sm noprint" data-x>Close</button></div><div class="body">${html}</div></div>`;
+  document.body.appendChild(o); const close = () => o.remove();
+  o.querySelector('[data-x]').onclick = close; o.addEventListener('mousedown', e => { if (e.target === o) close(); });
+  return {el: o.querySelector('.body'), close};
+}
+function table(cols, rows, opts = {}) {
+  return `<div class="scroll"><table><thead><tr>${cols.map((c, i) => `<th class="${(opts.num || []).includes(i) ? 'num' : ''}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.length ? rows.join('') : `<tr><td colspan="${cols.length}" class="muted">${opts.empty || 'Nothing here yet.'}</td></tr>`}</tbody></table></div>`;
+}
+const FLAG_LABELS = {BACKORDER: 'Sold more than the recorded stock', LATE_POSTED: 'Late entry (closed period)', PRICE_CHANGED: 'Price changed since last sync', OVER_CREDIT_LIMIT: 'Over credit limit', FUTURE_DATE: 'PC clock ahead', BAD_DATE: 'Bad date', WALKIN_PAID_ADJUSTED: 'Walk-in paid in full', OVERPAID_CAPPED: 'Overpaid, capped', OVERPAYMENT: 'Paid more than owed', BELOW_COST: 'Sold below cost', REP_STOCK_IN: 'Stock received by staff — check cost', NEW_PRODUCT_BY_REP: 'New product added by staff'};
+const flagTags = f => String(f || '').split(';').map(x => x.trim()).filter(Boolean).map(x => { const k = x.split(':')[0], d = x.indexOf(':') > 0 ? x.slice(x.indexOf(':') + 1).trim() : ''; return `<span class="tag" title="${esc(x)}">${esc(FLAG_LABELS[k] || k)}${d ? ' · ' + esc(d) : ''}</span>`; }).join('');
+const short = n => { const a = Math.abs(n), v = a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M' : a >= 1e3 ? (a / 1e3).toFixed(a >= 1e4 ? 0 : 1) + 'k' : String(Math.round(a)); return (n < 0 ? '-' : '') + v.replace(/\.0(?=[kM])/, ''); };
+function csv(cols, rows, name) {
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const blob = new Blob([[cols, ...rows].map(r => r.map(q).join(',')).join('\n')], {type: 'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+}
+
+/* ---------- login ---------- */
+function showLogin(msg) {
+  $('#root').innerHTML = `<div class="login"><form class="card" id="lf"><h1>Cashbook</h1><p class="muted">Owner and manager sign-in</p>
+  ${msg ? `<p class="neg">${esc(msg)}</p>` : ''}${!IN_SCRIPT && !API_URL ? '<div class="field"><label>Server link</label><input name="api" placeholder="https://script.google.com/macros/s/…/exec" required></div>' : ''}<div class="field"><label>Username</label><input name="u" autocomplete="username" required autofocus></div>
+  <div class="field"><label>Password</label><input name="p" type="password" autocomplete="current-password" required></div><button style="width:100%">Sign in</button></form></div>`;
+  $('#lf').onsubmit = e => { e.preventDefault(); const f = e.target; run(f.querySelector('button'), async () => {
+    if (f.api) { API_URL = f.api.value.trim(); localStorage.setItem('cb_o_api', API_URL); }
+    const d = await api('login', {username: f.u.value, pin: f.p.value, device: 'owner-app'});
+    if (d.user.role !== 'OWNER') { await api('logout', {token: d.token}).catch(() => {}); throw new Error('This app is for owners and managers. Staff use the sales app.'); }
+    TOKEN = d.token; ME = d.user; localStorage.setItem('cb_o_tok', TOKEN); localStorage.setItem('cb_o_me', JSON.stringify(d.user)); dropCache();
+    if (d.mustChange) await forcePassword(f.p.value);
+    await boot();
+  }); };
+}
+function forcePassword(oldPw) {
+  return new Promise(resolve => {
+    const m = modal('Choose your own password', `<p>For safety, replace the temporary password before continuing (at least 8 characters).</p>
+    <div class="field"><label>New password</label><input id="np" type="password" autocomplete="new-password"></div><div class="field"><label>Repeat it</label><input id="np2" type="password" autocomplete="new-password"></div><button id="go">Save password</button>`);
+    m.el.parentElement.querySelector('[data-x]').remove();
+    $('#go').onclick = e => run(e.target, async () => { if ($('#np').value !== $('#np2').value) throw new Error('The two passwords do not match.'); await api('changePin', {oldPin: oldPw, newPin: $('#np').value}); m.close(); toast('Password updated'); resolve(); });
+  });
+}
+
+/* ---------- shell ---------- */
+const NAV = [['dashboard', 'Dashboard'], ['record', 'Record'], ['transactions', 'Transactions'], ['products', 'Products & services'], ['parties', 'Customers & suppliers'], ['reports', 'Reports'], ['team', 'Team'], ['settings', 'Settings']];
+let installEvt = null; window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; const b = $('#inst'); if (b) b.style.display = ''; });
+function setBadge(n) { const b = document.querySelector('nav [data-v=dashboard]'); if (!b) return; const old = b.querySelector('.navbadge'); if (old) old.remove(); if (n > 0) b.insertAdjacentHTML('beforeend', `<span class="navbadge" title="Items need your attention">${n}</span>`); try { localStorage.setItem('cb_o_badge', n); } catch (e) {} }
+function shellHtml() {
+  return `<div class="shell"><nav><div class="brand">${esc((L && L.company) || 'Cashbook')}<small>Owner app</small></div>${NAV.map(n => `<button data-v="${n[0]}">${n[1]}</button>`).join('')}
+  <div class="bottom"><div>${esc(ME ? ME.fullName : '')}</div><button id="inst" style="display:none;margin:.4rem 0">Install app</button><button id="lo">Sign out</button></div></nav><main id="main"></main></div>`;
+}
+async function boot() {
+  if (!L) {
+    const j = await call('batch', {requests: [{action: 'lists'}, {action: 'dashboard', location: ''}]}).catch(e => { toast(e.message, true); return null; });
+    if (!j) return;
+    const [a, b] = j.data.results; if (a && a.ok) { L = a.data; MEM[ckey('lists')] = a.data; } if (b && b.ok) MEM[ckey('dashboard', {location: ''})] = b.data; saveKept(); LSTALE = false;
+  }
+  CUR = L.currency; draw_shell();
+  setTimeout(() => call('batch', {requests: [{action: 'products', location: ''}, {action: 'parties'}]}, true).then(j => { const r = j.data.results; if (r[0] && r[0].ok) MEM[ckey('products', {location: ''})] = r[0].data; if (r[1] && r[1].ok) MEM[ckey('parties')] = r[1].data; saveKept(); }).catch(() => {}), 1500);
+}
+function draw_shell() {
+  $('#root').innerHTML = shellHtml();
+  document.querySelectorAll('nav [data-v]').forEach(b => b.onclick = () => go(b.dataset.v));
+  $('#lo').onclick = async () => { await api('logout').catch(() => {}); TOKEN = null; L = null; localStorage.removeItem('cb_o_tok'); dropCache(); showLogin(); };
+  const inst = $('#inst'); if (installEvt) inst.style.display = ''; inst.onclick = async () => { if (installEvt) { installEvt.prompt(); installEvt = null; inst.style.display = 'none'; } };
+  const bd = +localStorage.getItem('cb_o_badge') || 0; if (bd) setBadge(bd);
+  go(VIEW);
+}
+let warmP = null, warmT = null;
+function applyBatch(j) {
+  const r = j.data.results, loc = VIEW_STATE.shop || '';
+  if (r[0] && r[0].ok) { L = r[0].data; CUR = L.currency; MEM[ckey('lists')] = r[0].data; LSTALE = false; }
+  if (r[1] && r[1].ok) MEM[ckey('dashboard', {location: loc})] = r[1].data;
+  if (r[2] && r[2].ok) MEM[ckey('products', {location: loc})] = r[2].data;
+  if (r[3] && r[3].ok) MEM[ckey('parties')] = r[3].data;
+  saveKept();
+}
+// After anything changes, quietly fetch the main screens in ONE request so the next tab you open is already there.
+function warm() {
+  clearTimeout(warmT);
+  warmT = setTimeout(() => { const loc = VIEW_STATE.shop || ''; warmP = call('batch', {requests: [{action: 'lists'}, {action: 'dashboard', location: loc}, {action: 'products', location: loc}, {action: 'parties'}]}, true).then(applyBatch).catch(() => {}).finally(() => { warmP = null; }); }, 250);
+}
+async function refreshLists(soft) {
+  if (soft && L) return;                       // screens that only need names and prices use what we have
+  if (warmP) await warmP;
+  if (L && !LSTALE) return;
+  L = await api('lists'); CUR = L.currency; LSTALE = false;
+}
+// Re-draw a screen after a save, but only if you are still on it (a slow save must never pull you back from another tab).
+function refresh(v) { if (VIEW === v) return go(v); }
+async function go(v) {
+  VIEW = v; VIEW_TOKEN++; document.querySelectorAll('nav [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  const m = $('#main'); if (!m) return; m.classList.remove('stale');
+  const warm = ['dashboard', 'products', 'parties', 'team'].includes(v) && Object.keys(MEM).some(k => k.startsWith({dashboard: 'dashboard', products: 'products', parties: 'parties', team: 'users'}[v] + '|'));
+  if (!warm) m.innerHTML = '<p class="muted" style="padding:1rem">Loading…</p>';
+  try { await VIEWS[v](m); } catch (e) { m.innerHTML = `<div class="card neg">${esc(e.message)}</div>`; }
+}
+
+/* ---------- shared helpers ---------- */
+const VIEW_STATE = {};
+const shops = () => (L.locations || []).filter(s => s.active);
+const multi = () => shops().length > 1;
+const shopName = id => (((L.locations || []).find(s => s.id === id)) || {name: id}).name;
+const shopSel = (id, label, withAll) => multi() ? `<div><label>${label || 'Shop'}</label><select id="${id}">${withAll === false ? '' : '<option value="">All shops</option>'}${shops().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>` : '';
+const typeTag = p => p.type === 'SERVICE' ? '<span class="tag g">service</span>' : '';
+
+/* ---------- dashboard ---------- */
+const VIEWS = {};
+VIEWS.dashboard = async m => {
+  await refreshLists(true);
+  const loc = VIEW_STATE.shop || '';
+  await swr('dashboard', {location: loc}, (d, stale) => drawDash(m, d, loc, stale));
+};
+function drawDash(m, d, loc, stale) {
+  const P = [['Today', d.today], ['This week', d.week], ['This month', d.month], ['This year', d.year]];
+  const row = (lab, f, strong) => `<div>${lab}</div>` + P.map(p => `<div class="num ${strong ? 'net' : ''} ${cls(f(p[1]))}">${f.fmt ? f.fmt(p[1]) : money(f(p[1]))}</div>`).join('');
+  const mx = Math.max(1, ...d.series.map(s => Math.abs(s.revenue)));
+  const attn = d.flagged.length + d.rejected.length + d.toReview.length + d.uncosted.length; setBadge(attn);
+  const WD = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const chart = `<div class="chart"><div class="cols">${d.series.map(s => { const z = !s.revenue, h = z ? 2 : Math.max(3, Math.round(Math.abs(s.revenue) / mx * 118)); return `<div class="col" title="${s.d}: ${money(s.revenue)}"><span class="val ${z ? 'z' : ''}">${z ? '0' : short(s.revenue)}</span><i class="${z ? 'z' : ''}" style="height:${h}px"></i></div>`; }).join('')}</div>
+    <div class="dates">${d.series.map(s => `<span><b>${s.d.slice(8)}</b>${WD[new Date(s.d + 'T12:00:00').getDay()]}</span>`).join('')}</div></div>`;
+  m.classList.toggle('stale', !!stale);
+  m.innerHTML = `<div class="row"><h1 style="flex:1 1 200px">Dashboard${loc ? ' — ' + esc(shopName(loc)) : ''}</h1>${shopSel('shop')}</div><p class="muted">Figures are FIFO-costed and update as staff sync. ${d.closedUntil ? 'Books closed up to ' + esc(d.closedUntil) + '.' : ''}</p>
+  <div class="period"><div class="h"></div>${P.map(p => `<div class="h num">${p[0]}</div>`).join('')}
+  ${row('Revenue', s => s.revenue)}${row('Units sold', Object.assign(s => s.qty, {fmt: s => qty(s.qty)}))}${row('Invoices', Object.assign(s => s.invoices, {fmt: s => s.invoices}))}
+  ${row('Cost of goods & services', s => s.cogs)}${row('Gross profit', s => s.gross)}${row('Write-offs', s => s.writeoffs)}${row('Expenses', s => s.expenses)}${row('Net profit', s => s.net, true)}${row('Cash collected', s => s.cashIn)}</div>
+  ${d.multiShop && !loc ? `<div class="card"><h3>Shops</h3>${table(['Shop', 'Revenue today', 'Revenue this month', 'Gross profit (month)', 'Expenses (month)', 'Net profit (month)', 'Stock at cost'], d.shops.map(s => `<tr><td><a href="#" data-shop="${esc(s.id)}">${esc(s.name)}</a></td><td class="num">${money(s.todayRevenue)}</td><td class="num">${money(s.monthRevenue)}</td><td class="num">${money(s.monthGross)}</td><td class="num">${money(s.monthExpenses)}</td><td class="num ${cls(s.monthNet)}">${money(s.monthNet)}</td><td class="num">${money(s.stockValue)}</td></tr>`), {num: [1, 2, 3, 4, 5, 6]})}</div>` : ''}
+  <div class="grid g3"><div class="card"><div class="muted">Customers owe you</div><div class="big">${money(d.receivables)}</div></div>
+  <div class="card"><div class="muted">You owe suppliers</div><div class="big">${money(d.payables)}</div></div>
+  <div class="card"><div class="muted">Stock value at cost${loc ? ' (this shop)' : ''}</div><div class="big">${money(d.stockValue)}</div><div class="hint">${d.productCount} products and services</div></div></div>
+  ${attn ? `<div class="card" style="border-color:#e0a100"><div class="row"><h3 style="flex:1">Needs your attention</h3><button class="ghost sm fit" id="ack">Mark all as reviewed</button></div>
+  ${d.toReview.length ? `<p><span class="tag">New</span> <b>${d.toReview.length}</b> product${d.toReview.length > 1 ? 's' : ''} added by staff. Check the price, then open and save each to confirm: ${d.toReview.map(x => `<a href="#" data-prod="${esc(x.sku)}">${esc(x.name)}</a> (${x.type.toLowerCase()}, ${money(x.price)}, by ${esc(x.addedBy)})`).join(' · ')}</p>` : ''}
+  ${d.uncosted.length ? `<p><span class="tag">No cost</span> Services with no cost set, so profit looks like 100%: ${d.uncosted.map(x => `<a href="#" data-prod="${esc(x.sku)}">${esc(x.name)}</a>`).join(' · ')}</p>` : ''}
+  ${d.rejected.map(r => `<p><span class="tag r">Rejected</span> ${esc(r.user)} · ${esc(r.time)}<br><span class="hint">${esc(r.detail)}</span></p>`).join('')}
+  ${d.flagged.map(f => `<p><b>${esc(f.docNo)}</b> · ${esc(f.date)} · ${esc(f.rep)}${f.shop && d.multiShop ? ' · ' + esc(f.shop) : ''} ${flagTags(f.flags)}</p>`).join('')}
+  <p class="hint">Rejected entries were not posted: re-enter them under Record if they were real. Flagged entries were posted but need a look.</p></div>` : ''}
+  <div class="grid g2"><div class="card"><h3>Revenue, last 14 days <span class="hint">(${CUR}; k = thousand, M = million)</span></h3>${chart}</div>
+  <div class="card"><h3>Low stock</h3>${table(['Product', 'Left', 'Reorder at'], d.lowStock.map(p => `<tr><td>${esc(p.name)}<div class="hint">${esc(p.sku)}${p.shop ? ' · ' + esc(p.shop) : ''}</div></td><td class="num ${p.stock <= 0 ? 'neg' : ''}">${qty(p.stock)} ${esc(p.unit)}</td><td class="num">${qty(p.reorder)}</td></tr>`), {num: [1, 2], empty: 'Nothing is below its reorder level.'})}</div></div>
+  <div class="card"><h3>Sales staff this week</h3>${table(['Who', 'Today revenue', 'Today collected', 'Today expenses', 'Week units', 'Week revenue', 'Week collected', 'Week expenses'],
+    d.reps.map(r => `<tr><td>${esc(r.rep)}</td><td class="num">${money(r.todayRevenue)}</td><td class="num">${money(r.todayCollected)}</td><td class="num">${money(r.todayExpenses)}</td><td class="num">${qty(r.weekQty)}</td><td class="num">${money(r.weekRevenue)}</td><td class="num">${money(r.weekCollected)}</td><td class="num">${money(r.weekExpenses)}</td></tr>`), {num: [1, 2, 3, 4, 5, 6, 7], empty: 'No sales activity yet this week.'})}
+  <p class="hint">“Collected” is cash received (including part-payments at sale). Compare it with what each person hands over.</p></div>
+  <div class="grid g2"><div class="card"><h3>Biggest debtors</h3>${table(['Customer', 'Owes'], d.debtors.map(c => `<tr><td><a href="#" data-st="${c.id}">${esc(c.name)}</a><div class="hint">${esc(c.phone)}</div></td><td class="num">${money(c.balance)}</td></tr>`), {num: [1], empty: 'Nobody owes you anything.'})}</div>
+  <div class="card"><h3>You owe</h3>${table(['Supplier', 'Balance'], d.creditors.map(c => `<tr><td><a href="#" data-st="${c.id}">${esc(c.name)}</a></td><td class="num">${money(c.balance)}</td></tr>`), {num: [1], empty: 'You owe no supplier.'})}</div></div>`;
+  const ss = $('#shop'); if (ss) { ss.value = loc; ss.onchange = () => { VIEW_STATE.shop = ss.value; refresh('dashboard'); }; }
+  const ack = $('#ack'); if (ack) ack.onclick = () => run(ack, async () => { await api('ackAttention'); refresh('dashboard'); });
+  m.querySelectorAll('[data-st]').forEach(a => a.onclick = e => { e.preventDefault(); statement(a.dataset.st); });
+  m.querySelectorAll('[data-shop]').forEach(a => a.onclick = e => { e.preventDefault(); VIEW_STATE.shop = a.dataset.shop; refresh('dashboard'); });
+  m.querySelectorAll('[data-prod]').forEach(a => a.onclick = e => { e.preventDefault(); VIEW_STATE.openProduct = a.dataset.prod; refresh('products'); });
+}
+
+/* ---------- record ---------- */
+function lineEditor(kind) {
+  const wrap = document.createElement('div'), priced = kind === 'sale' || kind === 'stock', hdr = kind === 'sale' ? 'Price' : 'Unit cost', uid_ = 'dl' + Math.random().toString(36).slice(2, 7);
+  const list = L.products.filter(p => p.active && (kind === 'sale' || p.type === 'ITEM'));
+  wrap.innerHTML = `<datalist id="${uid_}">${list.map(p => `<option value="${esc(p.sku)}">${esc(p.name)}${p.type === 'SERVICE' ? ' (service)' : ''}</option>`).join('')}</datalist>
+  <table><thead><tr><th>SKU</th><th class="num">Qty</th>${priced ? `<th class="num">${hdr}</th><th class="num">Line total</th>` : ''}<th></th></tr></thead><tbody></tbody></table><button type="button" class="ghost sm" data-add>+ Add line</button>`;
+  const tb = wrap.querySelector('tbody');
+  const prod = v => list.find(p => p.sku.toLowerCase() === String(v).trim().toLowerCase());
+  const calc = () => { let t = 0; tb.querySelectorAll('tr').forEach(tr => { const p = prod(tr.querySelector('.sku').value), q = +tr.querySelector('.q').value || 0, c = tr.querySelector('.c');
+    const shopSel_ = document.getElementById('f-shop'), here = shopSel_ ? shopSel_.value : 'MAIN', avail = p && p.type === 'ITEM' ? (p.byLoc && p.byLoc[here] !== undefined ? p.byLoc[here] : (p.byLoc ? 0 : p.stock)) : null, over = kind === 'sale' && avail !== null && q > avail;
+    tr.querySelector('.nm').innerHTML = p ? `${esc(p.name)} · ${p.type === 'SERVICE' ? 'service' : (over ? `<b class="neg">only ${qty(avail)} in stock here</b>` : qty(avail !== null ? avail : p.stock) + ' in stock' + (multi() && kind === 'sale' ? ' here' : ' (all shops)'))}` : '';
+    let unit = 0; if (priced) { if (kind === 'sale') { c.readOnly = !(p && p.editable); if (p && (!p.editable || !c.dataset.touched)) c.value = p.price; if (!p) c.value = ''; } unit = +c.value || 0; tr.querySelector('.lt').textContent = money(q * unit); }
+    t += q * unit; }); wrap.total = t; wrap.dispatchEvent(new CustomEvent('total')); };
+  const add = () => { const tr = document.createElement('tr'); tr.innerHTML = `<td><input class="sku" list="${uid_}" placeholder="SKU"><div class="hint nm"></div></td><td><input class="q num" type="number" step="any" min="0"></td>${priced ? `<td><input class="c num" type="number" step="any" min="0" ${kind === 'sale' ? 'readonly' : ''}></td><td class="num lt"></td>` : ''}<td><button type="button" class="ghost sm" data-rm>✕</button></td>`;
+    tr.addEventListener('input', e => { if (e.target.classList.contains('c')) e.target.dataset.touched = '1'; calc(); }); tr.querySelector('[data-rm]').onclick = () => { tr.remove(); calc(); }; tb.appendChild(tr); };
+  wrap.querySelector('[data-add]').onclick = add; add();
+  wrap.get = () => [...tb.querySelectorAll('tr')].map(tr => { const p = prod(tr.querySelector('.sku').value); if (!tr.querySelector('.sku').value.trim()) return null;
+    if (!p) throw new Error('Unknown or unavailable SKU: ' + tr.querySelector('.sku').value); const c = tr.querySelector('.c'); return {sku: p.sku, qty: +tr.querySelector('.q').value, unitCost: c ? +c.value : 0, price: c && kind === 'sale' ? +c.value : p.price}; }).filter(Boolean);
+  return wrap;
+}
+const partyOpts = type => L.parties.filter(p => p.type === type && p.active).map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.balance ? ' (' + money(p.balance) + ')' : ''}</option>`).join('');
+const methodOpts = () => L.paymentMethods.map(x => `<option>${esc(x)}</option>`).join('');
+
+function bulkOpening(after) {
+  const mo = modal('Load opening stock from a list', `<p>One product per line: <code>SKU, quantity, cost per unit</code>. Paste straight from Excel. Do this <b>once</b> when you start. Afterwards stock changes by itself (restocks, sales, adjustments).</p>
+  <div class="row">${shopSel('b-shop', 'Which shop holds this stock?', false)}</div><textarea id="b-t" rows="10" placeholder="PRD00001, 20, 1800&#10;PRD00002, 100, 150" style="margin-top:.6rem"></textarea><p class="hint">The cost per unit is required. It is what makes profit accurate. Services are skipped (they have no stock).</p><p><button id="b-go">Load stock</button></p>`);
+  $('#b-go').onclick = e => run(e.target, async () => { const r = await api('importOpeningStock', {text: $('#b-t').value, location: $('#b-shop') ? $('#b-shop').value : undefined});
+    toast(`${r.added} product(s) loaded as ${r.docNo}` + (r.skipped.length ? `, ${r.skipped.length} skipped` : ''), false); if (r.skipped.length) alert('Skipped:\n' + r.skipped.join('\n')); mo.close(); await refreshLists(); if (after) after(); });
+}
+
+VIEWS.record = async m => {
+  await refreshLists();
+  const T = [['STOCK_IN', 'Stock in / restock'], ['OPENING', 'Opening stock'], ['SALE', 'Sale or service'], ['EXPENSE', 'Expense'], ['PAYMENT_IN', 'Customer payment'], ['PAYMENT_OUT', 'Supplier payment'], ['ADJUSTMENT', 'Stock adjustment'], ['OPENING_BAL', 'Opening debt']];
+  if (multi()) T.splice(7, 0, ['TRANSFER', 'Move stock between shops']);
+  let cur = VIEW_STATE.recordType || 'STOCK_IN'; if (!T.some(t => t[0] === cur)) cur = 'STOCK_IN';
+  m.innerHTML = `<h1>Record</h1><div class="tabs">${T.map(t => `<button data-t="${t[0]}" class="${t[0] === cur ? 'on' : ''}">${t[1]}</button>`).join('')}</div><div id="form" class="card"></div>`;
+  m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { VIEW_STATE.recordType = b.dataset.t; refresh('record'); });
+  const f = $('#form'), D = `<div><label>Date</label><input type="date" id="f-date" value="${today()}" max="${today()}"></div>`;
+  const SH = shopSel('f-shop', 'Shop', false);
+  const submit = (label, build, after) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => run(b, async () => {
+    const entry = Object.assign({clientId: uid(), date: $('#f-date') ? $('#f-date').value : today(), location: $('#f-shop') ? $('#f-shop').value : undefined}, build());
+    let r; try { r = await api('entry', {entry}); } catch (err) { if (/Not enough stock/.test(err.message) && $('#oversell')) { $('#os-msg').textContent = err.message.replace(/^Not enough stock in /, 'In ').replace(/\. Record the delivery first.*$/, '.'); $('#oversell').style.display = ''; $('#oversell').scrollIntoView({block: 'center'}); } throw err; }
+    toast(`Saved ${r.docNo}` + (r.flags && r.flags.length ? ' — ' + r.flags.join('; ') : '')); await refreshLists(); if (after) after(r); VIEW_STATE.recordType = cur; refresh('record'); }); f.appendChild(b); };
+  const newParty = type => `<div class="field"><label>${type === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label><select id="f-party"><option value="">${type === 'CUSTOMER' ? 'Walk-in (cash sale)' : 'Cash purchase (no supplier)'}</option>${partyOpts(type)}<option value="__new">+ New…</option></select></div>
+    <div class="row" id="np" style="display:none"><div><label>Name</label><input id="f-nn"></div><div><label>Phone</label><input id="f-np"></div></div>`;
+  const partyPart = () => { const v = $('#f-party').value; return v === '__new' ? {newParty: {name: $('#f-nn').value, phone: $('#f-np').value}} : v ? {partyId: v} : {}; };
+  const wireParty = () => { $('#f-party').onchange = e => $('#np').style.display = e.target.value === '__new' ? '' : 'none'; };
+  if (cur === 'STOCK_IN' || cur === 'OPENING' || cur === 'SALE') {
+    const kind = cur === 'SALE' ? 'sale' : 'stock', opening = cur === 'OPENING';
+    f.innerHTML = `<h3>${cur === 'SALE' ? 'Record a sale or service' : opening ? 'Opening stock' : 'Receive stock'}</h3>${opening ? `<div class="card" style="background:#f8f9fb"><b>Many products?</b> Paste a list of SKU, quantity and cost instead of typing each one. <button class="ghost sm" id="bo" type="button">Load from a list</button></div><p class="hint">Opening stock is a <b>one-time</b> job for each product, on the day you start. It creates the first FIFO layer, and is not a purchase (no payment, no supplier debt). After that the system keeps the count itself.</p>` : ''}
+    <div class="row">${D}${SH}${opening ? '' : `<div>${cur === 'SALE' ? newParty('CUSTOMER') : newParty('SUPPLIER')}</div>`}</div>`;
+    if (opening) $('#bo').onclick = () => bulkOpening(() => refresh('record'));
+    const le = lineEditor(kind); f.appendChild(le);
+    const pay = document.createElement('div'); pay.className = 'row'; pay.style.marginTop = '1rem';
+    pay.innerHTML = opening ? '' : `<div><label>${cur === 'SALE' ? 'Amount received now' : 'Amount paid now'}</label><input id="f-paid" type="number" step="any" min="0" placeholder="Leave empty = paid in full"></div><div><label>Method</label><select id="f-method">${methodOpts()}</select></div>`;
+    pay.innerHTML += `<div><label>Notes</label><input id="f-notes"></div><div class="fit"><div class="total" id="f-total"></div></div>`; f.appendChild(pay);
+    if (!opening) wireParty(); le.addEventListener('total', () => { const t = $('#f-total'); if (t) t.textContent = money(le.total); });
+    if (cur === 'SALE') { const w = document.createElement('div'); w.id = 'oversell'; w.style.display = 'none'; w.className = 'warnbox'; w.innerHTML = '<b>Not enough recorded stock.</b> <span id="os-msg"></span><label style="display:flex;gap:.5rem;align-items:center;color:var(--ink);margin-top:.5rem"><input type="checkbox" id="os-ok" style="width:auto;min-height:0"> Sell anyway. The shelf really has it and the stock record is wrong. This sale will be flagged for review.</label>'; f.appendChild(w); }
+    submit('Save', () => { const items = le.get(); if (!items.length) throw new Error('Add at least one line.'); const paid = !opening && $('#f-paid').value !== '' ? +$('#f-paid').value : undefined;
+      return Object.assign({type: cur === 'SALE' ? 'SALE' : 'STOCK_IN', items, amountPaid: paid, notes: $('#f-notes').value, opening, method: opening ? undefined : $('#f-method').value, allowOversell: cur === 'SALE' && $('#os-ok') ? $('#os-ok').checked : undefined}, opening ? {} : partyPart()); });
+  } else if (cur === 'EXPENSE') {
+    f.innerHTML = `<h3>Record an expense</h3><div class="row">${D}${SH}<div><label>Category</label><select id="f-cat">${L.expenseCategories.map(c => `<option>${esc(c)}</option>`).join('')}</select></div>
+    <div><label>Amount</label><input id="f-amt" type="number" step="any" min="0"></div><div><label>Method</label><select id="f-method">${methodOpts()}</select></div></div><div class="field" style="margin-top:.8rem"><label>Description (for salaries: whose, which month)</label><input id="f-notes"></div>`;
+    submit('Save expense', () => ({type: 'EXPENSE', category: $('#f-cat').value, amount: +$('#f-amt').value, method: $('#f-method').value, notes: $('#f-notes').value}));
+  } else if (cur === 'PAYMENT_IN' || cur === 'PAYMENT_OUT') {
+    const isIn = cur === 'PAYMENT_IN';
+    f.innerHTML = `<h3>${isIn ? 'Customer paid us' : 'We paid a supplier'}</h3><div class="row">${D}${SH}<div><label>${isIn ? 'Customer' : 'Supplier'}</label><select id="f-party"><option value="">Choose…</option>${partyOpts(isIn ? 'CUSTOMER' : 'SUPPLIER')}</select></div>
+    <div><label>Amount</label><input id="f-amt" type="number" step="any" min="0"></div><div><label>Method</label><select id="f-method">${methodOpts()}</select></div></div><div class="field" style="margin-top:.8rem"><label>Notes</label><input id="f-notes"></div>`;
+    submit('Save payment', () => ({type: cur, partyId: $('#f-party').value, amount: +$('#f-amt').value, method: $('#f-method').value, notes: $('#f-notes').value}));
+  } else if (cur === 'OPENING_BAL') {
+    f.innerHTML = `<h3>Opening debt</h3><p class="hint">For money that was already owed on the day you start using Cashbook: a customer who owes you, or a supplier you owe. It changes only that account's balance. It is not a sale, a purchase or cash, so profit is unaffected.</p>
+    <div class="row">${D}<div><label>Customer or supplier</label><select id="f-party"><option value="">Choose…</option><optgroup label="Customers (owe you)">${partyOpts('CUSTOMER')}</optgroup><optgroup label="Suppliers (you owe)">${partyOpts('SUPPLIER')}</optgroup></select></div>
+    <div><label>Amount owed</label><input id="f-amt" type="number" step="any" min="0"></div></div><div class="field" style="margin-top:.8rem"><label>Notes</label><input id="f-notes" value="Opening balance"></div>`;
+    submit('Save opening debt', () => ({type: 'OPENING_BAL', partyId: $('#f-party').value, amount: +$('#f-amt').value, notes: $('#f-notes').value}));
+  } else if (cur === 'TRANSFER') {
+    f.innerHTML = `<h3>Move stock between shops</h3><p class="hint">The goods keep their original cost, so profit stays correct in both shops. Services cannot be moved.</p><div class="row">${D}<div><label>From</label><select id="t-from">${shops().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div><div><label>To</label><select id="t-to">${shops().map((s, i) => `<option value="${esc(s.id)}" ${i === 1 ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div></div>`;
+    const le = lineEditor('transfer'); f.appendChild(le);
+    const nb = document.createElement('div'); nb.className = 'field'; nb.style.marginTop = '1rem'; nb.innerHTML = '<label>Notes</label><input id="f-notes">'; f.appendChild(nb);
+    submit('Move stock', () => { const items = le.get(); if (!items.length) throw new Error('Add at least one line.'); return {type: 'TRANSFER', from: $('#t-from').value, to: $('#t-to').value, items, notes: $('#f-notes').value}; });
+  } else {
+    f.innerHTML = `<h3>Stock adjustment</h3><p class="hint">Use for damage, theft, expiry or count corrections. Losses reduce profit at their FIFO cost. Use a negative quantity for a loss, positive for stock you found.</p>
+    <div class="row">${D}${SH}<div><label>Product</label><input id="f-sku" list="dl-sku2" placeholder="SKU"><datalist id="dl-sku2">${L.products.filter(p => p.type === 'ITEM').map(p => `<option value="${esc(p.sku)}">${esc(p.name)} (${qty(p.stock)})</option>`).join('')}</datalist></div>
+    <div><label>Quantity (+/−)</label><input id="f-q" type="number" step="any"></div><div><label>Reason type</label><select id="f-rt"><option>Damage</option><option>Theft / missing</option><option>Expired</option><option>Count correction</option><option>Other</option></select></div></div>
+    <div class="field" style="margin-top:.8rem"><label>Explain what happened</label><input id="f-notes"></div>`;
+    submit('Save adjustment', () => ({type: 'ADJUSTMENT', sku: $('#f-sku').value, qty: +$('#f-q').value, reasonType: $('#f-rt').value, reason: $('#f-notes').value}));
+  }
+  const fs = $('#f-shop'); if (fs && VIEW_STATE.shop) fs.value = VIEW_STATE.shop;
+};
+
+/* ---------- transactions ---------- */
+VIEWS.transactions = async m => {
+  const TYPES = {SALE: 'Sale / service', STOCK_IN: 'Stock in', EXPENSE: 'Expense', PAYMENT_IN: 'Customer payment', PAYMENT_OUT: 'Supplier payment', ADJUSTMENT: 'Adjustment', TRANSFER: 'Shop transfer', OPENING_BAL: 'Opening balance', PRODUCT_ADDED: 'New product'};
+  m.innerHTML = `<h1>Transactions</h1><div class="card"><div class="row"><div><label>Search</label><input id="q" placeholder="Doc no, customer, rep, product…"></div>
+  <div><label>Type</label><select id="ty"><option value="">All</option>${Object.entries(TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>${shopSel('sh')}
+  <div><label>From</label><input type="date" id="fr"></div><div><label>To</label><input type="date" id="to"></div><div class="fit"><button id="go">Search</button></div></div></div><div id="res"></div>`;
+  let docs = []; const sh = $('#sh'); if (sh) sh.value = VIEW_STATE.shop || '';
+  const load = () => run($('#go'), async () => {
+    const r = await api('ledger', {q: $('#q').value, type: $('#ty').value, from: $('#fr').value, to: $('#to').value, location: sh ? sh.value : ''}); docs = r.docs;
+    $('#res').innerHTML = `<p class="hint">Showing ${docs.length} of ${r.total}. Mistakes are corrected with a reversal — nothing is ever deleted.</p>` + table(['Date', 'Doc', 'Type', 'Party / category', multi() ? 'Shop' : 'Rep', 'Amount', 'Paid', ''],
+      docs.map((d, i) => `<tr class="${d.reversed ? 'rev' : ''}"><td>${esc(d.date)}</td><td><b>${esc(d.docNo)}</b>${d.reversed ? ' <span class="tag r">reversed</span>' : ''}<div>${flagTags(d.flags)}</div></td><td>${TYPES[d.type] || d.type}</td>
+      <td>${esc(d.party || d.category || '')}<div class="hint">${esc(d.notes)}</div></td><td>${esc(multi() ? d.shop + ' · ' + d.rep : d.rep)}</td><td class="num">${['ADJUSTMENT', 'TRANSFER', 'PRODUCT_ADDED'].includes(d.type) ? '' : money(d.amount || d.paid)}</td><td class="num">${d.amount ? money(d.paid) : ''}</td>
+      <td class="num"><button class="ghost sm" data-d="${i}">Details</button></td></tr>`), {num: [5, 6]});
+    m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => detail(docs[+b.dataset.d]));
+  });
+  $('#go').onclick = load; $('#q').onkeydown = e => { if (e.key === 'Enter') load(); }; load();
+  function detail(d) {
+    const profit = d.type === 'SALE' ? d.amount - d.cogs : null;
+    const mo = modal(d.docNo, `<p>${esc(d.date)} · ${esc(TYPES[d.type] || d.type)} · ${esc(d.rep)}${multi() ? ' · ' + esc(d.shop) : ''} ${d.party ? '· ' + esc(d.party) : ''}</p>${d.lines.length ? table(['Product', 'Qty', 'Price/cost', 'Amount', 'Cost'], d.lines.map(l => `<tr><td>${esc(l.product)}<div class="hint">${esc(l.sku)}</div></td><td class="num">${qty(l.qty)}</td><td class="num">${money(l.price || l.cost)}</td><td class="num">${money(l.amount)}</td><td class="num">${l.cogs ? money(l.cogs) : ''}</td></tr>`), {num: [1, 2, 3, 4]}) : ''}
+    ${d.materials.length ? `<h3 style="margin-top:1rem">Materials used</h3>${table(['Material', 'Qty used', 'FIFO cost'], d.materials.map(x => `<tr><td>${esc(x.product)}<div class="hint">${esc(x.sku)}</div></td><td class="num">${qty(x.qty)}</td><td class="num">${money(x.cogs)}</td></tr>`), {num: [1, 2]})}` : ''}
+    <p>Total ${money(d.amount)} · paid ${money(d.paid)}${d.cogs ? ' · total cost ' + money(d.cogs) : ''}${profit !== null ? ` · <b class="${cls(profit)}">profit ${money(profit)}</b>` : ''}</p>
+    ${d.type === 'PRODUCT_ADDED' ? '<p class="hint">Informational entry. Nothing to reverse.</p>' : d.reversed ? '<p class="neg">This document has been reversed.</p>' : `<div class="field"><label>Reverse this document (reason required)</label><input id="rr" placeholder="e.g. Wrong customer"></div><button class="danger" id="rv">Reverse</button>`}`, true);
+    const rv = mo.el.querySelector('#rv'); if (rv) rv.onclick = () => run(rv, async () => { await api('entry', {entry: {clientId: uid(), type: 'REVERSAL', docNo: d.docNo, reason: mo.el.querySelector('#rr').value}}); mo.close(); toast('Reversed ' + d.docNo); load(); });
+  }
+};
+
+/* ---------- products ---------- */
+VIEWS.products = async m => {
+  await refreshLists(true);
+  const loc = VIEW_STATE.shop || '';
+  await swr('products', {location: loc}, (d, stale) => drawProducts(m, d, loc, stale));
+};
+function drawProducts(m, d, loc, stale) {
+  let showOff = !!VIEW_STATE.pOff, term = VIEW_STATE.pTerm || '', tf = VIEW_STATE.pType || '';
+  m.classList.toggle('stale', !!stale);
+  const draw = () => {
+    const rows = d.rows.filter(p => (showOff || p.active) && (!tf || p.type === tf) && (p.sku + p.name + p.category).toLowerCase().includes(term));
+    $('#pt').innerHTML = table(['Product', 'Price', 'In stock', 'Reorder', 'Cost per unit', 'Margin', 'Price for ' + d.targetMargin + '% margin', 'Stock value', ''], rows.map(p => `<tr class="${p.active ? '' : 'rev'}"><td><b>${esc(p.name)}</b> ${typeTag(p)}${p.reviewed ? '' : ' <span class="tag">new — review</span>'}<div class="hint">${esc(p.sku)} · ${esc(p.category)}${p.priceEditable ? ' · price set per job' : ''}</div></td>
+      <td class="num">${money(p.price)}</td>
+      <td class="num ${p.type === 'ITEM' && p.stock <= (p.reorder || 0) ? 'neg' : ''}">${p.type === 'SERVICE' ? '—' : qty(p.stock) + ' ' + esc(p.unit)}${p.type === 'ITEM' && !loc && multi() ? `<div class="hint">${Object.keys(p.byLoc).map(k => esc(shopName(k)) + ': ' + qty(p.byLoc[k])).join(' · ')}</div>` : ''}${p.backorder ? `<div class="tag r">${qty(p.backorder)} sold before stocked</div>` : ''}</td>
+      <td class="num">${p.type === 'SERVICE' ? '' : qty(p.reorder)}</td><td class="num">${p.avgCost ? money(p.avgCost) : '<span class="muted">not set</span>'}${p.type === 'SERVICE' && p.materials.length ? `<div class="hint">${p.materials.map(x => esc(x.name) + ' ×' + qty(x.qty)).join(', ')}</div>` : ''}</td>
+      <td class="num ${cls(p.margin)}">${p.avgCost ? p.margin + '%' : ''}</td><td class="num">${p.suggested ? money(p.suggested) : ''}</td><td class="num">${p.type === 'SERVICE' ? '' : money(p.fifoValue)}</td>
+      <td class="num"><button class="ghost sm" data-e="${esc(p.sku)}">Edit</button> <button class="ghost sm" data-h="${esc(p.sku)}">History</button></td></tr>`), {num: [1, 2, 3, 4, 5, 6, 7], empty: 'No products yet. Click “Add product” or “Bulk add”.'});
+    m.querySelectorAll('[data-e]').forEach(b => b.onclick = () => edit(d.rows.find(p => p.sku === b.dataset.e)));
+    m.querySelectorAll('[data-h]').forEach(b => b.onclick = () => history(b.dataset.h));
+  };
+  m.innerHTML = `<h1>Products, services & stock</h1><div class="card"><div class="row"><div><label>Search</label><input id="s"></div><div><label>Show</label><select id="tf"><option value="">Items and services</option><option value="ITEM">Items only</option><option value="SERVICE">Services only</option></select></div>${shopSel('sh', 'Stock in')}
+  <div class="fit"><label><input type="checkbox" id="off" style="width:auto;min-height:0"> switched-off</label></div><div class="fit"><button id="add">Add product or service</button></div><div class="fit"><button class="ghost" id="bulk">Bulk add</button></div><div class="fit"><button class="ghost" id="bulko">Load opening stock</button></div></div>
+  <p class="hint">Stock value at cost${loc ? ' in ' + esc(shopName(loc)) : ''}: <b>${money(d.stockValue)}</b>. “Cost per unit” is the FIFO average of what is on the shelf. For a service it is the job cost: your own cost plus the materials it uses. “Price for ${d.targetMargin}% margin” is what to charge to earn that margin (change the target in Settings).</p></div><div id="pt"></div>`;
+  const sh = $('#sh'); if (sh) { sh.value = loc; sh.onchange = () => { VIEW_STATE.shop = sh.value; refresh('products'); }; }
+  $('#s').value = term; $('#tf').value = tf; $('#off').checked = showOff;
+  $('#s').oninput = e => { term = e.target.value.toLowerCase(); VIEW_STATE.pTerm = term; draw(); }; $('#tf').onchange = e => { tf = e.target.value; VIEW_STATE.pType = tf; draw(); }; $('#off').onchange = e => { showOff = e.target.checked; VIEW_STATE.pOff = showOff; draw(); };
+  $('#add').onclick = () => edit(null); $('#bulk').onclick = bulk; $('#bulko').onclick = () => bulkOpening(() => refresh('products')); draw();
+  if (VIEW_STATE.openProduct) { const p = d.rows.find(x => x.sku === VIEW_STATE.openProduct); VIEW_STATE.openProduct = null; if (p) edit(p); }
+
+  function edit(p) {
+    const svc = p ? p.type === 'SERVICE' : false, items = L.products.filter(x => x.type === 'ITEM');
+    const mo = modal(p ? 'Edit ' + p.name : 'Add a product or service', `<div class="row"><div><label>Type</label><select id="a-type"><option value="ITEM">Item (counted in stock)</option><option value="SERVICE">Service (no stock — printing, modelling, 3D printing…)</option></select></div></div>
+    <div class="row" style="margin-top:.7rem"><div><label>SKU / code</label><input id="a-sku" value="${esc(p ? p.sku : '')}" ${p ? 'readonly' : ''}></div><div><label>Name</label><input id="a-name" value="${esc(p ? p.name : '')}"></div></div>
+    <div class="row" style="margin-top:.7rem"><div><label>Category</label><input id="a-cat" list="a-cats" value="${esc(p ? p.category : '')}"><datalist id="a-cats">${L.categories.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div><div><label>Unit (bag, sheet, print, hour, job…)</label><input id="a-unit" value="${esc(p ? p.unit : 'pc')}"></div></div>
+    <div class="row" style="margin:.7rem 0"><div><label>Selling price</label><input id="a-price" type="number" step="any" min="0" value="${p ? p.price : ''}"></div><div id="a-re-w"><label>Reorder level (alert at or below)</label><input id="a-re" type="number" step="any" min="0" value="${p ? p.reorder : 0}"></div></div>
+    <div id="a-svc" class="card" style="background:#f8f9fb;display:none"><h3>What this service costs you</h3><p class="hint">So you can see the profit on every job. Add your own cost per unit (labour, ink, power, machine time) and the stock items it uses up. Each sale then takes the materials out of stock automatically and costs them at FIFO.</p>
+      <div class="row"><div><label>Own cost per unit</label><input id="a-scost" type="number" step="any" min="0" value="${p ? p.serviceCost : 0}"></div><div class="fit"><label><input type="checkbox" id="a-pe" style="width:auto;min-height:0" ${p && p.priceEditable ? 'checked' : ''}> Price is quoted per job (staff enter the charge at sale)</label></div></div>
+      <h3 style="margin-top:.8rem">Materials used per unit</h3><datalist id="a-mats">${items.map(x => `<option value="${esc(x.sku)}">${esc(x.name)}</option>`).join('')}</datalist><div id="a-mrows"></div><button type="button" class="ghost sm" id="a-madd">+ Add material</button>
+      ${p && p.avgCost ? `<p style="margin-top:.8rem">Current cost per unit: <b>${money(p.avgCost)}</b> · charging <b>${money(p.price)}</b> · margin <b class="${cls(p.margin)}">${p.margin}%</b> · price for ${d.targetMargin}% margin: <b>${money(p.suggested)}</b></p>` : ''}</div>
+    ${p ? `<label><input type="checkbox" id="a-act" style="width:auto;min-height:0" ${p.active ? 'checked' : ''}> Active (can be sold)</label>` : ''}<p><button id="a-save">Save</button></p>`, true);
+    const type = $('#a-type'); type.value = svc ? 'SERVICE' : 'ITEM'; if (p) type.disabled = p.type === 'ITEM' && p.stock > 0;
+    const sync_ = () => { const s = type.value === 'SERVICE'; $('#a-svc').style.display = s ? '' : 'none'; $('#a-re-w').style.display = s ? 'none' : ''; }; type.onchange = sync_; sync_();
+    const addMat = (sku, q) => { const r = document.createElement('div'); r.className = 'row'; r.style.marginBottom = '.4rem'; r.innerHTML = `<div><input class="m-sku" list="a-mats" placeholder="Material SKU" value="${esc(sku || '')}"></div><div><input class="m-q" type="number" step="any" min="0" placeholder="Qty per unit" value="${q || ''}"></div><div class="fit"><button type="button" class="ghost sm">✕</button></div>`; r.querySelector('button').onclick = () => r.remove(); $('#a-mrows').appendChild(r); };
+    if (p) p.materials.forEach(x => addMat(x.sku, x.qty)); $('#a-madd').onclick = () => addMat();
+    $('#a-save').onclick = e => run(e.target, async () => { await api('saveProduct', {product: {isNew: !p, sku: $('#a-sku').value, name: $('#a-name').value, category: $('#a-cat').value, unit: $('#a-unit').value, sellingPrice: $('#a-price').value, reorderLevel: $('#a-re').value,
+      type: type.value, serviceCost: $('#a-scost').value, priceEditable: $('#a-pe').checked, materials: [...document.querySelectorAll('#a-mrows .row')].map(r => ({sku: r.querySelector('.m-sku').value, qty: r.querySelector('.m-q').value})), active: p ? $('#a-act').checked : undefined}});
+      mo.close(); toast('Saved'); await refreshLists(); refresh('products'); });
+  }
+  function bulk() {
+    const mo = modal('Bulk add products', `<p>Paste one product per line: <code>SKU, name, category, unit, price, reorder level</code>. You can paste straight from Excel or Google Sheets. Add <code>service</code> as a 7th column to make a line a service. Anything in a category listed under Settings → <i>Service categories</i> (for example “Printing Services”) becomes a service automatically.</p><textarea id="b-t" rows="10" placeholder="1001, Rice 50kg, Grains, bag, 70000, 5"></textarea><p><button id="b-go">Add products</button></p>`);
+    $('#b-go').onclick = e => run(e.target, async () => { const r = await api('importProducts', {text: $('#b-t').value}); toast(`${r.added} added` + (r.skipped.length ? `, ${r.skipped.length} skipped` : ''), !!r.skipped.length && !r.added);
+      if (r.skipped.length) alert('Skipped:\n' + r.skipped.join('\n')); mo.close(); await refreshLists(); refresh('products'); });
+  }
+  async function history(sku) {
+    const r = await api('stockCard', {sku, location: loc}), pr = r.product;
+    modal('History — ' + pr.name, `<p>${esc(pr.sku)} · ${pr.type === 'SERVICE' ? 'service' : 'in stock now: <b>' + qty(pr.stock) + ' ' + esc(pr.unit) + '</b>' + (loc ? ' (' + esc(shopName(loc)) + ')' : '')} · sold: <b>${qty(r.totals.sold)}</b> for <b>${money(r.totals.revenue)}</b></p>` +
+      table(['Date', 'Doc', 'What happened', multi() ? 'Shop' : '', 'In', 'Out', 'Balance', 'Who / notes'], r.rows.map(x => `<tr><td>${esc(x.date)}</td><td>${esc(x.docNo)}</td><td>${esc(x.type)}</td><td>${multi() ? esc(x.shop) : ''}</td><td class="num">${x.inQty === '' ? '' : qty(x.inQty)}</td><td class="num">${x.outQty === '' ? '' : qty(x.outQty)}</td><td class="num">${x.balance === '' ? '' : qty(x.balance)}</td><td class="hint">${esc(x.party)} ${esc(x.notes)}</td></tr>`), {num: [4, 5, 6], empty: 'No movement recorded yet.'}) +
+      `<p class="hint">Newest first. “Balance” is the running stock after that line${loc ? ' in this shop' : ''}.</p>`, true);
+  }
+}
+
+/* ---------- customers & suppliers ---------- */
+async function statement(id) {
+  const s = await api('statement', {partyId: id}), isC = s.party.type === 'CUSTOMER';
+  modal('Statement — ' + s.party.name, `<p>${esc(s.party.phone)} · ${isC ? 'Owes you' : 'You owe'} <b>${money(s.party.balance)}</b></p>` + table(['Date', 'Doc', 'Details', isC ? 'Sales' : 'Purchases', 'Payments', 'Balance'],
+    s.rows.map(r => `<tr><td>${esc(r.date)}</td><td>${esc(r.docNo)}</td><td>${esc(r.desc)}</td><td class="num">${r.debit ? money(r.debit) : ''}</td><td class="num">${r.credit ? money(r.credit) : ''}</td><td class="num">${money(r.balance)}</td></tr>`), {num: [3, 4, 5]})
+    + '<p class="noprint"><button onclick="window.print()">Print statement</button></p>', true);
+}
+VIEWS.parties = async m => { await swr('parties', {}, (d, stale) => drawParties(m, d, stale)); };
+function drawParties(m, d, stale) {
+  let tab = VIEW_STATE.partyTab || 'CUSTOMER'; m.classList.toggle('stale', !!stale);
+  const rows = d.rows.filter(p => p.type === tab);
+  m.innerHTML = `<h1>Customers & suppliers</h1><div class="tabs"><button data-t="CUSTOMER" class="${tab === 'CUSTOMER' ? 'on' : ''}">Customers</button><button data-t="SUPPLIER" class="${tab === 'SUPPLIER' ? 'on' : ''}">Suppliers</button><button class="fit" id="add" style="margin-left:auto">Add ${tab === 'CUSTOMER' ? 'customer' : 'supplier'}</button></div>` +
+    table(['Name', 'Phone', tab === 'CUSTOMER' ? 'Owes you' : 'You owe', tab === 'CUSTOMER' ? 'Credit limit' : '', ''], rows.map(p => `<tr class="${p.active ? '' : 'rev'}"><td><b>${esc(p.name)}</b><div class="hint">${esc(p.address)}</div></td><td>${esc(p.phone)}</td><td class="num ${p.balance > 0 ? 'neg' : ''}">${money(p.balance)}</td><td class="num">${tab === 'CUSTOMER' ? (p.creditLimit ? money(p.creditLimit) : '—') : ''}</td>
+    <td class="num"><button class="ghost sm" data-s="${p.id}">Statement</button> <button class="ghost sm" data-e="${p.id}">Edit</button></td></tr>`), {num: [2, 3]});
+  m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { VIEW_STATE.partyTab = b.dataset.t; refresh('parties'); });
+  m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => statement(b.dataset.s));
+  const edit = p => { const mo = modal(p ? 'Edit ' + p.name : 'Add ' + tab.toLowerCase(), `<div class="row"><div><label>Name</label><input id="p-n" value="${esc(p ? p.name : '')}"></div><div><label>Phone</label><input id="p-p" value="${esc(p ? p.phone : '')}"></div></div>
+    <div class="field" style="margin-top:.7rem"><label>Address</label><input id="p-a" value="${esc(p ? p.address : '')}"></div>${tab === 'CUSTOMER' ? `<div class="field"><label>Credit limit (0 = no limit; reps get a flag, not a block, when exceeded)</label><input id="p-c" type="number" min="0" value="${p ? p.creditLimit : 0}"></div>` : ''}
+    ${p ? `<label><input type="checkbox" id="p-act" style="width:auto;min-height:0" ${p.active ? 'checked' : ''}> Active</label>` : ''}<p><button id="p-s">Save</button></p>`);
+    $('#p-s').onclick = e => run(e.target, async () => { await api('saveParty', {party: {id: p ? p.id : undefined, type: tab, name: $('#p-n').value, phone: $('#p-p').value, address: $('#p-a').value, creditLimit: $('#p-c') ? $('#p-c').value : 0, active: p ? $('#p-act').checked : undefined}}); mo.close(); await refreshLists(); refresh('parties'); }); };
+  $('#add').onclick = () => edit(null); m.querySelectorAll('[data-e]').forEach(b => b.onclick = () => edit(d.rows.find(p => p.id === b.dataset.e)));
+}
+
+/* ---------- reports ---------- */
+VIEWS.reports = async m => {
+  const t = today(), wk = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+  m.innerHTML = `<h1>Reports</h1><div class="card"><div class="row"><div><label>Report</label><select id="g"><option value="day">Sales by day</option><option value="month">Monthly evaluation</option><option value="services">Services: charged vs cost</option><option value="product">Products: sales and profit</option><option value="stockmove">Stock movement (opening → closing)</option>${multi() ? '<option value="shop">By shop</option>' : ''}<option value="rep">By sales person</option><option value="expense">Expenses by category</option><option value="customer">By customer</option></select></div>
+  ${shopSel('sh')}<div><label>From</label><input type="date" id="fr" value="${wk}"></div><div><label>To</label><input type="date" id="to" value="${t}"></div><div class="fit"><button id="go">Show</button></div><div class="fit"><button class="ghost" id="dl">Download CSV</button></div></div>
+  <div class="row" style="margin-top:.6rem"><div class="fit"><button class="ghost sm" data-r="today">Today</button></div><div class="fit"><button class="ghost sm" data-r="week">This week</button></div><div class="fit"><button class="ghost sm" data-r="month">This month</button></div><div class="fit"><button class="ghost sm" data-r="year">This year</button></div></div></div><div id="res"></div>`;
+  let last = null; const sh = $('#sh'); if (sh) sh.value = VIEW_STATE.shop || '';
+  m.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const k = b.dataset.r; $('#to').value = t; $('#fr').value = k === 'today' ? t : k === 'week' ? wk : k === 'month' ? t.slice(0, 8) + '01' : t.slice(0, 5) + '01-01'; if (k === 'year') $('#g').value = 'month'; show(); });
+  const isQty = c => /qty|units|invoices|entries|opening|received|sold|used in|adjusted|moved|closing/i.test(c);
+  const show = () => run($('#go'), async () => {
+    const r = await api('report', {group: $('#g').value, from: $('#fr').value, to: $('#to').value, location: sh ? sh.value : ''}); last = r; const s = r.summary;
+    $('#res').innerHTML = `<div class="card"><b>${esc(r.from)} → ${esc(r.to)}</b> · Revenue ${money(s.revenue)} · Gross profit ${money(s.gross)} · Expenses ${money(s.expenses)} · <b class="${cls(s.net)}">Net profit ${money(s.net)}</b> · Cash collected ${money(s.cashIn)}</div>` +
+      table(r.columns, r.rows.map(row => `<tr>${row.map((v, i) => `<td class="${typeof v === 'number' ? 'num' : ''}">${typeof v === 'number' ? (isQty(r.columns[i]) ? qty(v) : /^Margin %$/.test(r.columns[i]) ? v + '%' : money(v)) : esc(v)}</td>`).join('')}</tr>`), {num: r.columns.map((c, i) => i).filter(i => r.rows[0] && typeof r.rows[0][i] === 'number'), empty: 'No activity in this period.'});
+  });
+  $('#go').onclick = show; $('#g').onchange = show; $('#dl').onclick = () => last && csv(last.columns, last.rows, `report-${$('#g').value}-${last.from}-to-${last.to}.csv`); show();
+};
+
+/* ---------- team ---------- */
+const PERM_LABELS = {STOCK_IN: 'Can receive and restock stock', ADD_PRODUCT: 'Can add new products and services'};
+VIEWS.team = async m => { await refreshLists(true); await swr('users', {}, (d, stale) => drawTeam(m, d, stale)); };
+function drawTeam(m, d, stale) {
+  m.classList.toggle('stale', !!stale);
+  m.innerHTML = `<div class="row"><h1 style="flex:1">Team</h1><div class="fit"><button id="add">Add staff member</button></div></div><p class="muted">Sales staff sign in on their own PC with a PIN. Each person works in one shop. Switching someone off logs them out everywhere immediately. Owner / manager accounts see profit and can also use the sales app.</p>` +
+    table(['Name', 'Username', 'Role', multi() ? 'Shop' : '', 'Can also', 'Last login', ''], d.rows.map(u => `<tr class="${u.active ? '' : 'rev'}"><td>${esc(u.fullName)}</td><td>${esc(u.username)}</td><td>${u.role === 'OWNER' ? 'Owner / manager' : 'Sales staff'}</td><td>${multi() ? esc(shopName(u.location)) : ''}</td><td class="hint">${u.role === 'OWNER' ? 'everything' : u.permissions.map(p => esc(PERM_LABELS[p] || p)).join('<br>') || '—'}</td><td>${esc(u.lastLogin)}</td>
+    <td class="num"><button class="ghost sm" data-e="${u.userId}">Edit</button> <button class="ghost sm" data-p="${u.userId}">Reset PIN</button> <button class="ghost sm" data-a="${u.userId}">${u.active ? 'Switch off' : 'Switch on'}</button></td></tr>`));
+  const permBoxes = u => Object.keys(PERM_LABELS).map(k => `<label style="display:flex;gap:.5rem;align-items:center;color:var(--ink)"><input type="checkbox" class="pm" value="${k}" style="width:auto;min-height:0" ${u && u.permissions.includes(k) ? 'checked' : ''}> ${PERM_LABELS[k]}</label>`).join('');
+  const shopOpts = v => shops().map(s => `<option value="${esc(s.id)}" ${s.id === v ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+  $('#add').onclick = () => { const mo = modal('Add a staff member', `<div class="row"><div><label>Full name</label><input id="u-n"></div><div><label>Username</label><input id="u-u" placeholder="e.g. ada"></div></div>
+    <div class="row" style="margin:.7rem 0"><div><label>Role</label><select id="u-r"><option value="REP">Sales staff</option><option value="OWNER">Owner / manager (sees profit)</option></select></div><div><label>PIN or password</label><input id="u-p" type="text" placeholder="staff: 4+ characters · owners: 8+"></div>${multi() ? `<div><label>Shop</label><select id="u-s">${shopOpts('MAIN')}</select></div>` : ''}</div>
+    <div id="u-perm" class="field"><label>Extra rights (off by default)</label>${permBoxes(null)}</div><p><button id="u-s2">Create account</button></p>`);
+    const sync_ = () => $('#u-perm').style.display = $('#u-r').value === 'REP' ? '' : 'none'; $('#u-r').onchange = sync_;
+    $('#u-s2').onclick = e => run(e.target, async () => { await api('saveUser', {user: {fullName: $('#u-n').value, username: $('#u-u').value, role: $('#u-r').value, pin: $('#u-p').value, location: $('#u-s') ? $('#u-s').value : 'MAIN', permissions: [...mo.el.querySelectorAll('.pm:checked')].map(x => x.value)}}); mo.close(); toast('Account created'); refresh('team'); }); };
+  m.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { const u = d.rows.find(x => x.userId === b.dataset.e);
+    const mo = modal('Edit ' + u.fullName, `<div class="field"><label>Full name</label><input id="e-n" value="${esc(u.fullName)}"></div>${multi() ? `<div class="field"><label>Shop</label><select id="e-s">${shopOpts(u.location)}</select></div>` : ''}
+      ${u.role === 'REP' ? `<div class="field"><label>Extra rights</label>${permBoxes(u)}<p class="hint">Staff who receive stock enter the cost themselves, and the entry is flagged for you to review. New products and services they add are marked “new — review” until you confirm them. Changes apply at their next sign-in.</p></div>` : ''}<p><button id="e-s2">Save</button></p>`);
+    $('#e-s2').onclick = e => run(e.target, async () => { await api('saveUser', {user: {userId: u.userId, fullName: $('#e-n').value, email: u.email, location: $('#e-s') ? $('#e-s').value : u.location, permissions: u.role === 'REP' ? [...mo.el.querySelectorAll('.pm:checked')].map(x => x.value) : undefined}}); mo.close(); toast('Saved'); refresh('team'); }); });
+  m.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const mo = modal('Reset PIN', `<div class="field"><label>New PIN / password</label><input id="r-p" type="text"></div><button id="r-s">Reset</button>`);
+    $('#r-s').onclick = e => run(e.target, async () => { await api('resetPin', {userId: b.dataset.p, newPin: $('#r-p').value}); mo.close(); toast('PIN reset. They are signed out everywhere.'); }); });
+  m.querySelectorAll('[data-a]').forEach(b => b.onclick = () => run(b, async () => { const u = d.rows.find(x => x.userId === b.dataset.a); await api('saveUser', {user: {userId: u.userId, fullName: u.fullName, email: u.email, active: !u.active}}); refresh('team'); }));
+}
+
+/* ---------- settings ---------- */
+VIEWS.settings = async m => {
+  await refreshLists();
+  const c = await api('config'), v = c.values;
+  m.innerHTML = `<h1>Settings</h1>
+  <div class="card"><h3>Sales app link</h3><p>Staff paste this link into the sales app the first time they sign in. Your install link (see the guide) can carry it for them.</p><input readonly value="${esc(c.webAppUrl || 'Not available — copy it from Deploy → Manage deployments')}" onclick="this.select()"></div>
+  <div class="card"><h3>Shops</h3><p class="hint">Each shop keeps its own stock and its own FIFO layers. Staff work in one shop. Sales, expenses and profit can be viewed per shop or for the whole company. Customers and suppliers are shared.</p>
+  ${table(['Shop', 'Address', ''], (L.locations || []).map(s => `<tr class="${s.active ? '' : 'rev'}"><td><b>${esc(s.name)}</b><div class="hint">${esc(s.id)}</div></td><td>${esc(s.address)}</td><td class="num"><button class="ghost sm" data-ls="${esc(s.id)}">Edit</button></td></tr>`))}<p style="margin-top:.8rem"><button id="addshop">Open a new shop</button></p></div>
+  <div class="card"><h3>Business details</h3><div class="row"><div><label>Company name</label><input id="c-CompanyName" value="${esc(v.CompanyName)}"></div><div><label>Currency symbol</label><input id="c-Currency" value="${esc(v.Currency)}"></div><div><label>Alert email (daily summary)</label><input id="c-AlertEmail" value="${esc(v.AlertEmail)}"></div></div>
+  <div class="row" style="margin-top:.7rem"><div><label>Expense categories (comma separated)</label><input id="c-ExpenseCategories" value="${esc(v.ExpenseCategories)}"></div><div><label>Payment methods</label><input id="c-PaymentMethods" value="${esc(v.PaymentMethods)}"></div></div>
+  <div class="row" style="margin-top:.7rem"><div><label>Target profit margin % (for suggested prices)</label><input id="c-TargetMarginPct" type="number" value="${esc(v.TargetMarginPct)}"></div><div><label>Service categories (bulk-added products in these become services)</label><input id="c-ServiceCategories" value="${esc(v.ServiceCategories)}"></div></div>
+  <div class="row" style="margin-top:.7rem"><div><label>Receipt footer</label><input id="c-ReceiptFooter" value="${esc(v.ReceiptFooter)}"></div><div><label>Sales staff see</label><select id="c-RepsSeeCompanyTotals"><option value="FALSE" ${v.RepsSeeCompanyTotals !== 'TRUE' ? 'selected' : ''}>Only their own totals</option><option value="TRUE" ${v.RepsSeeCompanyTotals === 'TRUE' ? 'selected' : ''}>Their shop's totals</option></select></div>
+  <div><label>Keep backups (days)</label><input id="c-BackupKeepDays" type="number" value="${esc(v.BackupKeepDays)}"></div></div>
+  <div class="row" style="margin-top:.7rem"><div><label>When a sale is bigger than the recorded stock</label><select id="c-OversellPolicy"><option value="BLOCK" ${v.OversellPolicy !== 'FLAG' ? 'selected' : ''}>Block it (entries made online are refused)</option><option value="FLAG" ${v.OversellPolicy === 'FLAG' ? 'selected' : ''}>Allow it, but flag it for my review</option></select><p class="hint">Staff using the sales app offline cannot be stopped after the fact, because the goods have already left. Those sales are always recorded and flagged. The sales app itself warns or blocks, following this setting.</p></div></div><p><button id="save">Save settings</button></p></div>
+  <div class="card"><h3>Close a period</h3><p>${v.ClosedUntil ? 'Books are closed up to <b>' + esc(v.ClosedUntil) + '</b>.' : 'No period is closed yet.'} Closing locks the figures: nothing can be posted on or before that date, and late entries from staff are dated the next open day and flagged.</p>
+  <div class="row"><div><label>Close everything up to and including</label><input type="date" id="cl" max="${c.today}"></div><div class="fit"><button id="close" class="danger">Close period</button></div></div></div>
+  <div class="card"><h3>Safety checks</h3><div class="row"><div class="fit"><button class="ghost" id="bk">Back up now</button></div><div class="fit"><button class="ghost" id="ic">Check data integrity</button></div><div class="fit"><button class="ghost" id="rc">Repair from ledger</button></div><div class="fit"><button class="ghost" id="au">View audit log</button></div></div><div id="out"></div></div>
+  <div class="card danger-zone"><h3>Danger zone — delete data permanently</h3><p>Use this to clear test entries before you go live, or to start again. <b>Deleted data cannot be brought back from this app.</b> A full copy of the spreadsheet is saved to Google Drive (folder <i>Cashbook Backups</i>) just before anything is deleted, and the reset is written to the audit log.</p>
+  <div class="row" style="margin-bottom:.4rem"><div class="fit"><button class="ghost sm" id="rz-test">Preset: clear my test transactions</button></div><div class="fit"><button class="ghost sm" id="rz-all">Preset: everything except my login</button></div></div>
+  <div id="rz-list" class="muted">Loading what can be deleted…</div>
+  <div class="row" style="margin-top:.8rem"><div><label>Your password</label><input id="rz-pw" type="password" autocomplete="current-password"></div><div><label>Type DELETE to confirm</label><input id="rz-ph" autocomplete="off"></div><div class="fit"><button class="danger" id="rz-go">Delete permanently</button></div></div></div>
+  <div class="card"><h3>Your password</h3><div class="row"><div><label>Current</label><input id="pw0" type="password"></div><div><label>New (8+ characters)</label><input id="pw1" type="password"></div><div class="fit"><button id="pw">Change</button></div></div></div>
+  <p class="hint">Cashbook v${esc(c.version)} · time zone ${esc(c.timezone)} · today is ${esc(c.today)}</p>`;
+  const shopForm = s => { const mo = modal(s ? 'Edit ' + s.name : 'Open a new shop', `<div class="field"><label>Shop name</label><input id="s-n" value="${esc(s ? s.name : '')}"></div><div class="field"><label>Address</label><input id="s-a" value="${esc(s ? s.address : '')}"></div>
+    ${s ? `<label><input type="checkbox" id="s-act" style="width:auto;min-height:0" ${s.active ? 'checked' : ''}> Open (untick to close it — only possible when it holds no stock and has no staff)</label>` : '<p class="hint">A new shop starts with no stock. Load it with Record → Opening stock or Stock in, or move stock from another shop. Then create its staff under Team.</p>'}<p><button id="s-s">Save</button></p>`);
+    $('#s-s').onclick = e => run(e.target, async () => { await api('saveLocation', {location: {id: s ? s.id : undefined, name: $('#s-n').value, address: $('#s-a').value, active: s ? $('#s-act').checked : undefined}}); mo.close(); await refreshLists(); toast('Saved'); refresh('settings'); }); };
+  $('#addshop').onclick = () => shopForm(null); m.querySelectorAll('[data-ls]').forEach(b => b.onclick = () => shopForm(L.locations.find(s => s.id === b.dataset.ls)));
+  $('#save').onclick = e => run(e.target, async () => { const values = {}; Object.keys(v).filter(k => k !== 'ClosedUntil').forEach(k => values[k] = $('#c-' + k).value); await api('saveConfig', {values}); await refreshLists(); toast('Settings saved'); });
+  $('#close').onclick = e => run(e.target, async () => { if (!confirm('Close all periods up to ' + $('#cl').value + '? This cannot be undone from the dashboard.')) return; await api('closePeriod', {date: $('#cl').value}); toast('Period closed'); refresh('settings'); });
+  $('#bk').onclick = e => run(e.target, async () => { const r = await api('backup', {xlsx: true}); toast('Backup saved: ' + r.file); });
+  const showIssues = (issues, intro) => { $('#out').innerHTML = intro + (issues.length ? `<p class="neg">${issues.length} problem${issues.length > 1 ? 's' : ''} found:</p><ul>${issues.slice(0, 25).map(i => `<li>${esc(i.msg)}<div class="hint">${esc(i.hint || '')}</div></li>`).join('')}</ul>` : '<p class="pos">All good. Stock, balances and cost layers agree with the ledger.</p>'); };
+  $('#ic').onclick = e => run(e.target, async () => { const r = await api('integrity'); showIssues(r.issues, r.ok ? '' : '<p class="hint">The ledger is the master record. Everything else is worked out from it. “Repair” rebuilds the rest from the ledger and tells you exactly what it changed.</p>'); });
+  $('#rc').onclick = e => run(e.target, async () => { const r = await api('recalc'); showIssues(r.remaining, r.fixed ? `<p class="pos">${r.fixed} thing${r.fixed > 1 ? 's' : ''} repaired from the ledger:</p><ul>${r.details.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p class="muted">Nothing needed repairing.</p>'); toast(r.fixed + ' repaired'); });
+  $('#au').onclick = e => run(e.target, async () => { const r = await api('audit'); $('#out').innerHTML = table(['Time', 'User', 'Action', 'Result', 'Detail'], r.rows.map(x => `<tr><td>${esc(x.time)}</td><td>${esc(x.user)}</td><td>${esc(x.action)}</td><td>${esc(x.result)}</td><td class="hint">${esc(x.detail)}</td></tr>`)); });
+  api('resetPreview').then(pv => {
+    const info = {transactions: pv.counts.transactions + ' ledger rows, ' + pv.counts.batches + ' stock layers', products: pv.counts.products + ' products and services', parties: pv.counts.parties + ' customers and suppliers', staff: pv.counts.staff + ' other accounts', shops: pv.counts.shops + ' extra shops', audit: pv.counts.audit + ' log rows', settings: 'back to defaults'};
+    $('#rz-list').innerHTML = Object.keys(pv.scopes).map(k => `<label class="chk"><input type="checkbox" class="rz" value="${k}"><span><b>${esc(pv.scopes[k])}</b><br><span class="hint">${esc(info[k])}</span></span></label>`).join('') + '<p class="hint">Products, customers, suppliers and shops are used by past transactions, so ticking any of them also ticks “All transactions”.</p>';
+    const set = (keys) => document.querySelectorAll('.rz').forEach(c => c.checked = keys.includes(c.value));
+    document.querySelectorAll('.rz').forEach(c => c.onchange = () => { if (c.checked && ['products', 'parties', 'shops'].includes(c.value)) document.querySelector('.rz[value=transactions]').checked = true; if (!c.checked && c.value === 'transactions') document.querySelectorAll('.rz').forEach(x => { if (['products', 'parties', 'shops'].includes(x.value)) x.checked = false; }); });
+    $('#rz-test').onclick = () => set(['transactions']); $('#rz-all').onclick = () => set(Object.keys(pv.scopes));
+  }).catch(() => { $('#rz-list').textContent = 'Could not load.'; });
+  $('#rz-go').onclick = e => run(e.target, async () => {
+    const scopes = [...document.querySelectorAll('.rz:checked')].map(x => x.value); if (!scopes.length) throw new Error('Tick at least one thing to delete.');
+    if (!confirm('This permanently deletes: ' + scopes.join(', ') + '.\n\nA backup copy is saved to Google Drive first. Continue?')) return;
+    const r = await api('factoryReset', {scopes, password: $('#rz-pw').value, phrase: $('#rz-ph').value}); L = null; dropCache(); await refreshLists();
+    $('#rz-list').innerHTML = `<p class="pos"><b>Done.</b> Deleted: ${esc(r.scopes.join(', '))}.</p><p class="hint">Safety backup: ${esc(r.backup)}. Staff apps will drop any entries they had not synced when they next connect.</p>`; $('#rz-pw').value = $('#rz-ph').value = ''; toast('Deleted. Backup saved to Drive.');
+  });
+  $('#pw').onclick = e => run(e.target, async () => { await api('changePin', {oldPin: $('#pw0').value, newPin: $('#pw1').value}); toast('Password changed'); $('#pw0').value = $('#pw1').value = ''; });
+};
+
+/* ---------- start ---------- */
+loadKept();
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && !IN_SCRIPT) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (TOKEN) {
+  const kept = MEM[ckey('lists')];
+  if (kept) { L = kept; CUR = L.currency; LSTALE = true; draw_shell(); }               // open instantly with what we remember, then check it
+  else boot();
+} else showLogin();
+</script>
+</body>
+</html>
