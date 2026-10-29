@@ -1,7 +1,7 @@
 // Shared by the Sales app and the Owner app (same GitHub Pages site).
 // Strategy: open from the device instantly, and refresh the copy in the background, so a new version you upload
 // is picked up the next time the app opens. Calls to the server (another website) are never touched.
-const CACHE = 'cashbook-v3';
+const CACHE = 'cashbook-v4';
 const FILES = ['./', './index.html', './RepApp.html', './owner.html', './manifest.json', './manifest-owner.json', './icon-192.png', './icon-512.png', './icon-owner-192.png', './icon-owner-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

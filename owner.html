@@ -412,7 +412,7 @@ function drawProducts(m, d, loc, stale) {
   m.classList.toggle('stale', !!stale);
   const draw = () => {
     const rows = d.rows.filter(p => (showOff || p.active) && (!tf || p.type === tf) && (p.sku + p.name + p.category).toLowerCase().includes(term));
-    $('#pt').innerHTML = table(['Product', 'Price', 'In stock', 'Reorder', 'Cost per unit', 'Margin', 'Price for ' + d.targetMargin + '% margin', 'Stock value', ''], rows.map(p => `<tr class="${p.active ? '' : 'rev'}"><td><b>${esc(p.name)}</b> ${typeTag(p)}${p.reviewed ? '' : ' <span class="tag">new — review</span>'}<div class="hint">${esc(p.sku)} · ${esc(p.category)}${p.priceEditable ? ' · price set per job' : ''}</div></td>
+    $('#pt').innerHTML = table(['Product', 'Price', 'In stock', 'Reorder', 'FIFO cost / unit', 'Margin', 'Price for ' + d.targetMargin + '% margin', 'Stock value', ''], rows.map(p => `<tr class="${p.active ? '' : 'rev'}"><td><b>${esc(p.name)}</b> ${typeTag(p)}${p.reviewed ? '' : ' <span class="tag">new — review</span>'}<div class="hint">${esc(p.sku)} · ${esc(p.category)}${p.priceEditable ? ' · price set per job' : ''}</div>${p.type === 'ITEM' ? `<div class="hint">Default cost: ${money(p.lastCost)}</div>` : ''}</td>
       <td class="num">${money(p.price)}</td>
       <td class="num ${p.type === 'ITEM' && p.stock <= (p.reorder || 0) ? 'neg' : ''}">${p.type === 'SERVICE' ? '—' : qty(p.stock) + ' ' + esc(p.unit)}${p.type === 'ITEM' && !loc && multi() ? `<div class="hint">${Object.keys(p.byLoc).map(k => esc(shopName(k)) + ': ' + qty(p.byLoc[k])).join(' · ')}</div>` : ''}${p.backorder ? `<div class="tag r">${qty(p.backorder)} sold before stocked</div>` : ''}</td>
       <td class="num">${p.type === 'SERVICE' ? '' : qty(p.reorder)}</td><td class="num">${p.avgCost ? money(p.avgCost) : '<span class="muted">not set</span>'}${p.type === 'SERVICE' && p.materials.length ? `<div class="hint">${p.materials.map(x => esc(x.name) + ' ×' + qty(x.qty)).join(', ')}</div>` : ''}</td>
@@ -435,19 +435,43 @@ function drawProducts(m, d, loc, stale) {
     const mo = modal(p ? 'Edit ' + p.name : 'Add a product or service', `<div class="row"><div><label>Type</label><select id="a-type"><option value="ITEM">Item (counted in stock)</option><option value="SERVICE">Service (no stock — printing, modelling, 3D printing…)</option></select></div></div>
     <div class="row" style="margin-top:.7rem"><div><label>SKU / code</label><input id="a-sku" value="${esc(p ? p.sku : '')}" ${p ? 'readonly' : ''}></div><div><label>Name</label><input id="a-name" value="${esc(p ? p.name : '')}"></div></div>
     <div class="row" style="margin-top:.7rem"><div><label>Category</label><input id="a-cat" list="a-cats" value="${esc(p ? p.category : '')}"><datalist id="a-cats">${L.categories.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div><div><label>Unit (bag, sheet, print, hour, job…)</label><input id="a-unit" value="${esc(p ? p.unit : 'pc')}"></div></div>
-    <div class="row" style="margin:.7rem 0"><div><label>Selling price</label><input id="a-price" type="number" step="any" min="0" value="${p ? p.price : ''}"></div><div id="a-re-w"><label>Reorder level (alert at or below)</label><input id="a-re" type="number" step="any" min="0" value="${p ? p.reorder : 0}"></div></div>
+    <div class="row" style="margin:.7rem 0"><div><label>Selling price</label><input id="a-price" type="number" step="0.01" min="0" value="${p ? p.price : ''}"></div><div id="a-re-w"><label>Reorder level (alert at or below)</label><input id="a-re" type="number" step="any" min="0" value="${p ? p.reorder : 0}"></div></div>
+    <div id="a-item-fields" class="card" style="background:#f8f9fb;margin:.7rem 0">
+      <h3>Product cost &amp; stock</h3>
+      <div class="row"><div><label>Cost price per unit</label><input id="a-cost" type="number" step="0.0001" min="0" placeholder="e.g. 2500" value="${p ? p.lastCost : ''}"></div>
+        <div><label>Shop / stock location</label><select id="a-loc">${L.locations.filter(x => x.active).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div></div>
+      <div class="row" style="margin-top:.7rem"><div><label>${p ? 'In stock — corrected counted quantity' : 'Initial quantity in stock'}</label><input id="a-stock" type="number" step="0.0001" min="0" placeholder="0" value="${p ? Number((p.byLoc || {})[loc || 'MAIN'] || 0) : 0}"></div>
+        <div id="a-count-reason-wrap" style="display:none"><label>Reason for stock correction</label><input id="a-count-reason" maxlength="200" placeholder="e.g. Physical stock count correction" value="Physical stock count correction"></div></div>
+      <p class="hint" id="a-stock-hint">${p ? 'Quantity changes create an inventory adjustment (not a direct balance overwrite). Cost price updates the default for future incoming stock; existing FIFO batches and past sale profit are unchanged.' : 'Opening stock creates an auditable opening inventory record and FIFO cost batch. No supplier payment is recorded.'}</p>
+      ${p ? `<p class="hint">Current FIFO average cost for stock displayed above: <b>${money(p.avgCost)}</b>. Changing default cost does not revalue already-received stock.</p>` : ''}
+    </div>
     <div id="a-svc" class="card" style="background:#f8f9fb;display:none"><h3>What this service costs you</h3><p class="hint">So you can see the profit on every job. Add your own cost per unit (labour, ink, power, machine time) and the stock items it uses up. Each sale then takes the materials out of stock automatically and costs them at FIFO.</p>
       <div class="row"><div><label>Own cost per unit</label><input id="a-scost" type="number" step="any" min="0" value="${p ? p.serviceCost : 0}"></div><div class="fit"><label><input type="checkbox" id="a-pe" style="width:auto;min-height:0" ${p && p.priceEditable ? 'checked' : ''}> Price is quoted per job (staff enter the charge at sale)</label></div></div>
       <h3 style="margin-top:.8rem">Materials used per unit</h3><datalist id="a-mats">${items.map(x => `<option value="${esc(x.sku)}">${esc(x.name)}</option>`).join('')}</datalist><div id="a-mrows"></div><button type="button" class="ghost sm" id="a-madd">+ Add material</button>
       ${p && p.avgCost ? `<p style="margin-top:.8rem">Current cost per unit: <b>${money(p.avgCost)}</b> · charging <b>${money(p.price)}</b> · margin <b class="${cls(p.margin)}">${p.margin}%</b> · price for ${d.targetMargin}% margin: <b>${money(p.suggested)}</b></p>` : ''}</div>
     ${p ? `<label><input type="checkbox" id="a-act" style="width:auto;min-height:0" ${p.active ? 'checked' : ''}> Active (can be sold)</label>` : ''}<p><button id="a-save">Save</button></p>`, true);
     const type = $('#a-type'); type.value = svc ? 'SERVICE' : 'ITEM'; if (p) type.disabled = p.type === 'ITEM' && p.stock > 0;
-    const sync_ = () => { const s = type.value === 'SERVICE'; $('#a-svc').style.display = s ? '' : 'none'; $('#a-re-w').style.display = s ? 'none' : ''; }; type.onchange = sync_; sync_();
+    const shop = $('#a-loc'); const itemStockAt = shopId => Number((p && p.byLoc && p.byLoc[shopId]) || 0);
+    const initialShop = (loc && L.locations.some(x => x.id === loc && x.active)) ? loc : ((L.locations.find(x => x.id === 'MAIN' && x.active) || L.locations.find(x => x.active) || {}).id || 'MAIN');
+    shop.value = initialShop;
+    // Existing stock quantities are specific to a branch. Do not use a company total when editing one branch.
+    $('#a-stock').value = p ? itemStockAt(initialShop) : 0;
+    const stockReason = () => { const changed = !!p && type.value === 'ITEM' && Math.abs(Number($('#a-stock').value) - itemStockAt(shop.value)) > 0.000001;
+      $('#a-count-reason-wrap').style.display = changed ? '' : 'none'; };
+    shop.onchange = () => { $('#a-stock').value = p ? itemStockAt(shop.value) : 0; stockReason(); };
+    $('#a-stock').oninput = stockReason;
+    const sync_ = () => { const s = type.value === 'SERVICE'; $('#a-svc').style.display = s ? '' : 'none'; $('#a-item-fields').style.display = s ? 'none' : ''; $('#a-re-w').style.display = s ? 'none' : ''; stockReason(); }; type.onchange = sync_; sync_();
     const addMat = (sku, q) => { const r = document.createElement('div'); r.className = 'row'; r.style.marginBottom = '.4rem'; r.innerHTML = `<div><input class="m-sku" list="a-mats" placeholder="Material SKU" value="${esc(sku || '')}"></div><div><input class="m-q" type="number" step="any" min="0" placeholder="Qty per unit" value="${q || ''}"></div><div class="fit"><button type="button" class="ghost sm">✕</button></div>`; r.querySelector('button').onclick = () => r.remove(); $('#a-mrows').appendChild(r); };
     if (p) p.materials.forEach(x => addMat(x.sku, x.qty)); $('#a-madd').onclick = () => addMat();
-    $('#a-save').onclick = e => run(e.target, async () => { await api('saveProduct', {product: {isNew: !p, sku: $('#a-sku').value, name: $('#a-name').value, category: $('#a-cat').value, unit: $('#a-unit').value, sellingPrice: $('#a-price').value, reorderLevel: $('#a-re').value,
-      type: type.value, serviceCost: $('#a-scost').value, priceEditable: $('#a-pe').checked, materials: [...document.querySelectorAll('#a-mrows .row')].map(r => ({sku: r.querySelector('.m-sku').value, qty: r.querySelector('.m-q').value})), active: p ? $('#a-act').checked : undefined}});
-      mo.close(); toast('Saved'); await refreshLists(); refresh('products'); });
+    $('#a-save').onclick = e => run(e.target, async () => {
+      const item = type.value === 'ITEM';
+      if (item && (!$('#a-stock').value || Number($('#a-stock').value) < 0 || !Number.isFinite(Number($('#a-stock').value)))) throw new Error('Enter a valid stock quantity (0 or more).');
+      if (item && $('#a-cost').value !== '' && (Number($('#a-cost').value) < 0 || !Number.isFinite(Number($('#a-cost').value)))) throw new Error('Enter a valid product cost.');
+      const result = await api('saveProduct', {product: {isNew: !p, sku: $('#a-sku').value, name: $('#a-name').value, category: $('#a-cat').value, unit: $('#a-unit').value, sellingPrice: $('#a-price').value, reorderLevel: $('#a-re').value,
+        type: type.value, costPrice: item ? $('#a-cost').value : undefined, stockQuantity: item ? $('#a-stock').value : undefined,
+        location: item ? shop.value : undefined, quantityReason: item && p ? $('#a-count-reason').value : undefined,
+        serviceCost: $('#a-scost').value, priceEditable: $('#a-pe').checked, materials: [...document.querySelectorAll('#a-mrows .row')].map(r => ({sku: r.querySelector('.m-sku').value, qty: r.querySelector('.m-q').value})), active: p ? $('#a-act').checked : undefined}});
+      mo.close(); toast(result.stockAdjusted ? 'Saved · stock movement ' + result.stockDocNo : 'Product saved'); await refreshLists(); refresh('products'); });
   }
   function bulk() {
     const mo = modal('Bulk add products', `<p>Paste one product per line: <code>SKU, name, category, unit, price, reorder level</code>. You can paste straight from Excel or Google Sheets. Add <code>service</code> as a 7th column to make a line a service. Anything in a category listed under Settings → <i>Service categories</i> (for example “Printing Services”) becomes a service automatically.</p><textarea id="b-t" rows="10" placeholder="1001, Rice 50kg, Grains, bag, 70000, 5"></textarea><p><button id="b-go">Add products</button></p>`);
